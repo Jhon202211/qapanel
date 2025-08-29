@@ -34,19 +34,21 @@ app.post('/api/run-command', async (req, res) => {
             detached: true
         });
 
-        // Detener el proceso después de un tiempo para evitar que se quede corriendo
-        setTimeout(() => {
-            try {
-                codegenProcess.kill();
-            } catch (e) {
-                // Proceso ya terminado
-            }
-        }, 10000); // 10 segundos
+        // No matar el proceso automáticamente - dejar que el usuario lo controle
+        // El proceso se mantendrá vivo hasta que el usuario lo cierre manualmente
+        codegenProcess.on('close', (code) => {
+            console.log(`Proceso de codegen terminado con código: ${code}`);
+        });
+
+        codegenProcess.on('error', (error) => {
+            console.error(`Error en proceso de codegen: ${error}`);
+        });
 
         res.json({ 
             success: true, 
-            stdout: 'Codegen iniciado. Se abrirá el navegador y la ventana de código.',
-            command: command 
+            stdout: 'Codegen iniciado. El navegador y la ventana de código permanecerán abiertos hasta que los cierres manualmente.',
+            command: command,
+            processId: codegenProcess.pid
         });
     } else if (command.includes('show-report')) {
         // Para el comando show-report, abrir en el navegador

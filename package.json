@@ -9,7 +9,9 @@
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "report": "playwright show-report",
-    "install-browsers": "playwright install"
+    "install-browsers": "playwright install",
+    "codegen": "playwright codegen",
+    "codegen:target": "playwright codegen --target=playwright-test"
   },
   "keywords": ["playwright", "testing", "automation", "web"],
   "author": "",
