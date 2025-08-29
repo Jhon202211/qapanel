@@ -1,6 +1,7 @@
 const express = require('express');
 const { exec } = require('child_process');
 const path = require('path');
+const fs = require('fs').promises;
 const app = express();
 const PORT = 3000;
 
@@ -121,6 +122,64 @@ app.get('/api/open-report', (req, res) => {
             openReport(res);
         }
     });
+});
+
+// API para listar tests disponibles
+app.get('/api/list-tests', async (req, res) => {
+    try {
+        const testsDir = path.join(__dirname, 'tests');
+        const files = await fs.readdir(testsDir);
+        
+        const testFiles = files
+            .filter(file => file.endsWith('.spec.ts') || file.endsWith('.spec.js'))
+            .map(file => ({
+                name: file.replace('.spec.ts', '').replace('.spec.js', ''),
+                path: `tests/${file}`
+            }));
+        
+        res.json(testFiles);
+    } catch (error) {
+        console.error('Error listando tests:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API para leer contenido de un test
+app.post('/api/read-test', async (req, res) => {
+    try {
+        const { filePath } = req.body;
+        
+        if (!filePath) {
+            return res.status(400).json({ error: 'Ruta del archivo no proporcionada' });
+        }
+        
+        const fullPath = path.join(__dirname, filePath);
+        const content = await fs.readFile(fullPath, 'utf8');
+        
+        res.json({ success: true, content });
+    } catch (error) {
+        console.error('Error leyendo test:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// API para escribir contenido en un test
+app.post('/api/write-test', async (req, res) => {
+    try {
+        const { filePath, content } = req.body;
+        
+        if (!filePath || content === undefined) {
+            return res.status(400).json({ error: 'Ruta del archivo o contenido no proporcionado' });
+        }
+        
+        const fullPath = path.join(__dirname, filePath);
+        await fs.writeFile(fullPath, content, 'utf8');
+        
+        res.json({ success: true, message: 'Test guardado exitosamente' });
+    } catch (error) {
+        console.error('Error guardando test:', error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 function openReport(res) {

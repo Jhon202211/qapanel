@@ -11,7 +11,12 @@ test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Contraseña' }).fill('123456a');
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   
+  // Pausa de 5 segundos antes de buscar usuario para desactivar
+  await page.waitForTimeout(5000);
+  
   // Buscar usuario por documento
+  await page.getByRole('button', { name: 'Control de acceso' }).click();
+  await page.getByRole('link', { name: 'Usuarios' }).click();
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).click();
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill('395844565');
   
@@ -20,11 +25,18 @@ test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   await page.getByRole('button', { name: 'Desactivar Copropiedad' }).click();
   await page.getByTestId('toggle-notify_user').click();
   await page.getByRole('button', { name: 'Desactivar' }).click();
-  
   // Verificar mensaje de desactivación
   await page.getByText('Eliminación de copropiedades del usuarioSe eliminaron las copropiedades del').nth(1).click();
   
+  
+  // Pausa de 10 segundos antes de buscar usuario para reactivar
+  await page.waitForTimeout(10000);
+  
+  // Refrescar la página para asegurar estado limpio
+  await page.reload();
+  
   // Buscar usuario nuevamente para reactivar
+  
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).click();
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill('395844565');
   
