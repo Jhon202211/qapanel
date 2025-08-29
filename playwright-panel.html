@@ -221,6 +221,10 @@
                         <span class="icon">▶️</span>
                         Ejecutar Demo Todo
                     </button>
+                    <button class="btn btn-primary" onclick="runTest('copropiedad')">
+                        <span class="icon">▶️</span>
+                        Desactivar y Reactivar Copropiedades
+                    </button>
                     <button class="btn btn-success" onclick="runAllTests()">
                         <span class="icon">🚀</span>
                         Ejecutar Todas las Pruebas
@@ -416,7 +420,8 @@
             const commands = {
                 'login_queo': 'npx playwright test tests/login_queo.spec.ts --headed',
                 'example': 'npx playwright test tests/example.spec.ts --headed',
-                'demo-todo': 'npx playwright test tests-examples/demo-todo-app.spec.ts --headed'
+                'demo-todo': 'npx playwright test tests-examples/demo-todo-app.spec.ts --headed',
+                'copropiedad': 'npx playwright test tests/copropiedad-usuario.spec.ts --headed'
             };
             
             const command = commands[testName];
