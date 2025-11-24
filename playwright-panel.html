@@ -265,30 +265,25 @@
         </div>
 
         <div class="panel">
-            <!-- Sección de Pruebas -->
+            <!-- Sección de Tests Dinámicos -->
             <div class="section">
-                <h3>🧪 Ejecutar Pruebas</h3>
-                <div class="button-grid">
-                    <button class="btn btn-primary" onclick="runTest('login_queo')">
-                        <span class="icon">▶️</span>
-                        Ejecutar Login QueoAccess
-                    </button>
-                    <button class="btn btn-primary" onclick="runTest('example')">
-                        <span class="icon">▶️</span>
-                        Ejecutar Example
-                    </button>
-                    <button class="btn btn-primary" onclick="runTest('demo-todo')">
-                        <span class="icon">▶️</span>
-                        Ejecutar Demo Todo
-                    </button>
-                    <button class="btn btn-primary" onclick="runTest('copropiedad')">
-                        <span class="icon">▶️</span>
-                        Desactivar y Reactivar Copropiedades
-                    </button>
-                    <button class="btn btn-success" onclick="runAllTests()">
-                        <span class="icon">🚀</span>
-                        Ejecutar Todas las Pruebas
-                    </button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">📋 Listado de Tests</h3>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-info btn-sm" onclick="reloadTestsList()">
+                            <span class="icon">🔄</span>
+                            Recargar listado de tests
+                        </button>
+                        <button class="btn btn-success btn-sm" onclick="runAllTests()">
+                            <span class="icon">🚀</span>
+                            Ejecutar Todas las Pruebas
+                        </button>
+                    </div>
+                </div>
+                <div id="dynamicTestsContainer" class="button-grid">
+                    <p style="color: #6c757d; text-align: center; padding: 20px;">
+                        Cargando tests...
+                    </p>
                 </div>
             </div>
 
@@ -515,7 +510,7 @@
                 'login_queo': 'npx playwright test tests/login_queo.spec.ts --headed',
                 'example': 'npx playwright test tests/example.spec.ts --headed',
                 'demo-todo': 'npx playwright test tests-examples/demo-todo-app.spec.ts --headed',
-                'copropiedad': 'npx playwright test tests/copropiedad-usuario.spec.ts --headed'
+                'copropiedad': 'npx playwright test tests/test_deactivate_activate_property.spec.ts --headed'
             };
             
             const command = commands[testName];
@@ -575,6 +570,64 @@
         };
 
         window.clearOutput = clearOutput;
+
+        // Función para cargar y mostrar la lista de tests dinámicamente
+        async function loadDynamicTests() {
+            const container = document.getElementById('dynamicTestsContainer');
+            container.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">Cargando tests...</p>';
+            
+            try {
+                const response = await fetch('/api/list-tests');
+                if (response.ok) {
+                    const tests = await response.json();
+                    
+                    if (tests.length === 0) {
+                        container.innerHTML = '<p style="color: #6c757d; text-align: center; padding: 20px;">No se encontraron tests en la carpeta tests/</p>';
+                        return;
+                    }
+                    
+                    container.innerHTML = '';
+                    
+                    tests.forEach(test => {
+                        const button = document.createElement('button');
+                        button.className = 'btn btn-primary';
+                        button.innerHTML = `<span class="icon">▶️</span> ${test.name}`;
+                        button.onclick = () => runDynamicTest(test.path);
+                        container.appendChild(button);
+                    });
+                    
+                    appendOutput(`✅ ${tests.length} test(s) cargado(s) desde la carpeta tests/`);
+                } else {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+            } catch (error) {
+                container.innerHTML = `<p style="color: #dc3545; text-align: center; padding: 20px;">Error cargando tests: ${error.message}</p>`;
+                appendOutput(`❌ Error cargando lista de tests: ${error.message}`);
+            }
+        }
+
+        // Función para ejecutar un test dinámico
+        function runDynamicTest(testPath) {
+            const command = `npx playwright test ${testPath} --headed`;
+            runCommandReal(command, `Test: ${testPath}`);
+        }
+
+        // Función para recargar la lista de tests
+        function reloadTestsList() {
+            updateStatus('Recargando lista de tests...', 'running');
+            appendOutput('🔄 Recargando lista de tests...');
+            loadDynamicTests();
+            updateStatus('Lista de tests recargada', 'success');
+        }
+
+        // Cargar tests al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            loadDynamicTests();
+        });
+
+        window.loadDynamicTests = loadDynamicTests;
+        window.reloadTestsList = reloadTestsList;
+        window.runDynamicTest = runDynamicTest;
     </script>
     
     <!-- Script del Editor de Tests -->

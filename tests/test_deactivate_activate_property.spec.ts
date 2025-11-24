@@ -1,14 +1,25 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Cargar variables de entorno
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const USER_EMAIL = process.env.USER_EMAIL || '';
+const USER_PASSWORD = process.env.USER_PASSWORD || '';
+const USER_FOR_DEACTIVATION = process.env.USER_FOR_DEACTIVATION || '395844565';
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
+const EXECUTION_TYPE = process.env.EXECUTION_TYPE || 'plan';
 
 test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   // Navegar al login
-  await page.goto('https://alex.queo.dev/login');
+  await page.goto(`${BASE_URL}/login`);
   
   // Iniciar sesión
   await page.getByRole('textbox', { name: 'Correo electrónico' }).click();
-  await page.getByRole('textbox', { name: 'Correo electrónico' }).fill('automatetest@yopmail.com');
+  await page.getByRole('textbox', { name: 'Correo electrónico' }).fill(USER_EMAIL);
   await page.getByRole('textbox', { name: 'Contraseña' }).click();
-  await page.getByRole('textbox', { name: 'Contraseña' }).fill('123456a');
+  await page.getByRole('textbox', { name: 'Contraseña' }).fill(USER_PASSWORD);
   await page.getByRole('button', { name: 'Iniciar sesión' }).click();
   
   // Pausa de 5 segundos antes de buscar usuario para desactivar
@@ -18,7 +29,7 @@ test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   await page.getByRole('button', { name: 'Control de acceso' }).click();
   await page.getByRole('link', { name: 'Usuarios' }).click();
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).click();
-  await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill('395844565');
+  await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill(USER_FOR_DEACTIVATION);
   
   // Desactivar copropiedad
   await page.getByRole('button', { name: 'menu' }).click();
@@ -38,7 +49,7 @@ test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   // Buscar usuario nuevamente para reactivar
   
   await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).click();
-  await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill('395844565');
+  await page.getByRole('textbox', { name: 'Buscar por nombre, apellido,' }).fill(USER_FOR_DEACTIVATION);
   
   // Reactivar copropiedad
   await page.getByRole('button', { name: 'menu' }).click();
