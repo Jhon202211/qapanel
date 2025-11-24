@@ -30,6 +30,12 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    
+    /* Ejecutar en modo visible para poder observar el navegador */
+    headless: false,
+    
+    /* Velocidad más lenta para mejor observación */
+    slowMo: 1000,
   },
 
   /* Configure projects for major browsers */
