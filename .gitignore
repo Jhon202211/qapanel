@@ -35,6 +35,9 @@ temp/
 .env.test.local
 .env.production.local
 
+# Screenshots de errores (mantener carpeta pero no los archivos)
+screenshot_error_/*.png
+
 # Archivos de cobertura
 coverage/
 .nyc_output/
