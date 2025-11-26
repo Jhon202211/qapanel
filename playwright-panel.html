@@ -295,6 +295,23 @@
             <!-- Sección de Codegen -->
             <div class="section">
                 <h3>🎬 Record & Playback</h3>
+                
+                <!-- Campo para nombre del test -->
+                <div style="margin-bottom: 15px;">
+                    <label for="testNameInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                        📝 Nombre del test (sin extensión):
+                    </label>
+                    <input 
+                        type="text" 
+                        id="testNameInput" 
+                        placeholder="ej: mi-test-grabado" 
+                        style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px;"
+                    />
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        El archivo se guardará como: tests/[nombre].spec.ts
+                    </small>
+                </div>
+                
                 <div class="button-grid">
                     <button class="btn btn-warning" onclick="startCodegen('queoaccess')">
                         <span class="icon">🎥</span>
@@ -472,40 +489,112 @@
 
         // Ejecutar comandos reales a través del servidor
         async function runCommandReal(command, description) {
-            if (isRunning) return;
+            if (isRunning) {
+                console.log('Ya hay un comando ejecutándose, ignorando...');
+                return;
+            }
             
+            console.log('Iniciando ejecución:', description);
             setRunning(true);
             updateStatus(`Ejecutando: ${description}...`, 'running');
             appendOutput(`\n$ ${command}`);
             
+            // AbortController para timeout del fetch
+            const controller = new AbortController();
+            const fetchTimeout = setTimeout(() => {
+                console.warn('Timeout del fetch alcanzado');
+                controller.abort();
+            }, 10 * 60 * 1000); // 10 minutos timeout para el fetch
+            
+            // Timeout de seguridad adicional: desbloquear después de 10.5 minutos máximo
+            const safetyTimeout = setTimeout(() => {
+                console.warn('Timeout de seguridad: desbloqueando botones');
+                setRunning(false);
+                appendOutput('⚠️ Timeout: El comando tardó demasiado. Botones desbloqueados.');
+            }, 10.5 * 60 * 1000); // 10.5 minutos
+            
             try {
+                console.log('Enviando request al servidor...');
                 const response = await fetch('/api/run-command', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ command })
+                    body: JSON.stringify({ command }),
+                    signal: controller.signal
                 });
+                
+                console.log('Respuesta recibida, status:', response.status, 'ok:', response.ok);
+                clearTimeout(fetchTimeout);
+                clearTimeout(safetyTimeout);
                 
                 if (response.ok) {
                     const result = await response.json();
+                    console.log('Resultado parseado:', result);
+                    
                     if (result.success) {
                         appendOutput(`✅ ${result.stdout || 'Comando ejecutado exitosamente'}`);
                         if (result.stderr) {
                             appendOutput(`⚠️ ${result.stderr}`);
                         }
-                        updateStatus(`${description} completado exitosamente`, 'success');
+                        
+                        // Si el test falló, mostrar mensaje apropiado
+                        if (result.testFailed) {
+                            console.log('Test falló, actualizando estado a error');
+                            updateStatus(`${description} completado con errores en el test`, 'error');
+                        } else {
+                            console.log('Test pasó, actualizando estado a success');
+                            updateStatus(`${description} completado exitosamente`, 'success');
+                        }
+                        
+                        // Limpiar el campo del nombre del test cuando finaliza la grabación
+                        if (command.includes('codegen')) {
+                            const testNameInput = document.getElementById('testNameInput');
+                            if (testNameInput) {
+                                testNameInput.value = '';
+                            }
+                        }
                     } else {
+                        console.error('Result.success es false:', result);
                         throw new Error(result.error || 'Error desconocido');
                     }
                 } else {
-                    throw new Error(`Error HTTP: ${response.status}`);
+                    console.error('Response no es ok, status:', response.status);
+                    // Intentar parsear el error del servidor
+                    try {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `Error HTTP: ${response.status}`);
+                    } catch (parseError) {
+                        throw new Error(`Error HTTP: ${response.status}`);
+                    }
                 }
             } catch (error) {
-                appendOutput(`❌ Error: ${error.message}`);
-                updateStatus(`Error en ${description}`, 'error');
+                console.error('Error capturado en catch:', error);
+                clearTimeout(fetchTimeout);
+                clearTimeout(safetyTimeout);
+                
+                if (error.name === 'AbortError') {
+                    appendOutput(`❌ Error: El comando tardó demasiado tiempo (timeout de 10 minutos)`);
+                    updateStatus(`Timeout en ${description}`, 'error');
+                } else {
+                    appendOutput(`❌ Error: ${error.message}`);
+                    updateStatus(`Error en ${description}`, 'error');
+                }
             } finally {
+                console.log('Ejecutando bloque finally - desbloqueando botones');
+                // GARANTIZAR que siempre se desbloqueen los botones
+                clearTimeout(fetchTimeout);
+                clearTimeout(safetyTimeout);
+                
+                // Forzar desbloqueo múltiple para asegurar que funcione
+                isRunning = false;
                 setRunning(false);
+                
+                // Verificar que se desbloquearon
+                const buttons = document.querySelectorAll('.btn');
+                const disabledButtons = Array.from(buttons).filter(btn => btn.disabled);
+                console.log(`Botones desbloqueados. Total: ${buttons.length}, Deshabilitados: ${disabledButtons.length}`);
+                console.log('Botones desbloqueados después de ejecutar:', description);
             }
         }
 
@@ -529,16 +618,37 @@
         };
 
         window.startCodegen = (type) => {
-            const commands = {
-                'queoaccess': 'npx playwright codegen https://alex.queo.dev/login',
-                'custom': 'npx playwright codegen',
-                'firefox': 'npx playwright codegen -b firefox https://alex.queo.dev/login'
-            };
-            
-            const command = commands[type];
-            if (command) {
-                runCommandReal(command, `Codegen ${type}`);
-            }
+            // Obtener el nombre del test del input
+            const testNameInput = document.getElementById('testNameInput');
+                const testName = testNameInput.value.trim();
+                
+                // Validar que haya un nombre
+                if (!testName) {
+                    alert('⚠️ Por favor, ingresa un nombre para el test antes de grabar.');
+                    testNameInput.focus();
+                    return;
+                }
+                
+                // Validar que el nombre sea válido para un archivo
+                const validName = testName.replace(/[^a-zA-Z0-9-_]/g, '-');
+                if (validName !== testName) {
+                    if (!confirm(`El nombre se ajustará a: "${validName}". ¿Continuar?`)) {
+                        return;
+                    }
+                }
+                
+                const outputFile = `tests/${validName}.spec.ts`;
+                
+                const commands = {
+                    'queoaccess': `npx playwright codegen https://alex.queo.dev/login --target=playwright-test --output=${outputFile}`,
+                    'custom': `npx playwright codegen --target=playwright-test --output=${outputFile}`,
+                    'firefox': `npx playwright codegen -b firefox https://alex.queo.dev/login --target=playwright-test --output=${outputFile}`
+                };
+                
+                const command = commands[type];
+                if (command) {
+                    runCommandReal(command, `Codegen ${type} - Guardando en ${outputFile}`);
+                }
         };
 
         window.showReport = async () => {
