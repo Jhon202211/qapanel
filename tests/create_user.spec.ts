@@ -7,6 +7,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const USER_EMAIL = process.env.USER_EMAIL || '';
 const USER_PASSWORD = process.env.USER_PASSWORD || '';
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 const EXECUTION_TYPE = process.env.EXECUTION_TYPE || 'plan';
 
 // Clase UserPage para encapsular la lógica de interacción con la página de usuarios
@@ -20,7 +21,7 @@ class UserPage {
   }
 
   async login(email: string, password: string): Promise<void> {
-    await this.page.goto('https://alex.queo.dev/login');
+    await this.page.goto(`${BASE_URL}/login`);
     
     const emailField = this.page.locator("input[name='email']");
     await emailField.waitFor({ state: 'visible', timeout: this.timeout });
@@ -41,7 +42,7 @@ class UserPage {
   }
 
   async createUser(uniqueId: string): Promise<void> {
-    await this.page.goto('https://alex.queo.dev/users/create');
+    await this.page.goto(`${BASE_URL}/users/create`);
     
     const fillField = async (selector: string, inputText: string, byName: boolean = true): Promise<void> => {
       const field = byName 
