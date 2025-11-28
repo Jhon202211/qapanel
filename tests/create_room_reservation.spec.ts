@@ -99,7 +99,7 @@ class RoomReservationPage {
 
     // Buscar la sala escribiendo el nombre exacto en el input de búsqueda
     console.log(`🔍 Buscando sala: ${roomName}...`);
-    const searchInput = this.page.locator('#search');
+    const searchInput = this.page.getByRole('textbox', { name: 'Buscar sala por nombre' });
     await searchInput.waitFor({ state: 'visible', timeout: this.timeout });
     await searchInput.clear();
     await searchInput.fill(roomName);
