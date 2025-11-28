@@ -13,13 +13,19 @@
     "codegen": "playwright codegen",
     "codegen:target": "playwright codegen --target=playwright-test"
   },
-  "keywords": ["playwright", "testing", "automation", "web"],
+  "keywords": [
+    "playwright",
+    "testing",
+    "automation",
+    "web"
+  ],
   "author": "",
   "license": "ISC",
   "description": "Proyecto de pruebas automatizadas con Playwright y panel de control web",
   "devDependencies": {
     "@playwright/test": "^1.53.2",
-    "@types/node": "^24.0.12"
+    "@types/node": "^24.0.12",
+    "cross-env": "^10.1.0"
   },
   "dependencies": {
     "express": "^4.18.2"
