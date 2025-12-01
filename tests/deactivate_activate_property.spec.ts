@@ -72,7 +72,19 @@ test('Desactivar y reactivar copropiedades de usuarios', async ({ page }) => {
   await page.getByText('Queo Q&A (Staging)', { exact: true }).click();
   await page.getByRole('button', { name: 'Restaurar' }).click();
   
-  // Verificar mensaje de restauración
-  await page.getByText('Restauración de copropiedades').nth(1).click();
-  await page.getByRole('button', { name: 'Cerrar' }).click();
+  // Esperar a que el proceso de restauración se complete
+  await page.waitForTimeout(2000);
+  
+  // Verificar mensaje de restauración - esperar a que aparezca
+  const restorationMessage = page.getByText('Restauración de copropiedades').nth(1);
+  await restorationMessage.waitFor({ state: 'visible', timeout: 10000 });
+  await restorationMessage.click();
+  
+  // Esperar un poco más antes de cerrar para asegurar que el proceso se complete
+  await page.waitForTimeout(1500);
+  
+  // Hacer clic en el botón Cerrar
+  const closeButton = page.getByRole('button', { name: 'Cerrar' });
+  await closeButton.waitFor({ state: 'visible', timeout: 5000 });
+  await closeButton.click();
 });
