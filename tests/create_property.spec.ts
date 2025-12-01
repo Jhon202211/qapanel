@@ -192,56 +192,42 @@ class PropertyPage {
       // El mensaje está en un modal de SweetAlert - esperar hasta que aparezca
       console.log('⏳ Esperando que aparezca el mensaje de éxito...');
       
-      // Estrategia 1: Buscar en el contenedor de SweetAlert con texto exacto (timeout largo)
+      // Buscar cualquier elemento que contenga el texto exacto (estrategia que funciona)
       try {
-        const successMessage = this.page.locator('#swal2-html-container', { 
-          hasText: 'Copropiedad creada correctamente!' 
-        });
-        await successMessage.waitFor({ state: 'visible', timeout: 30000 });
+        const successMessage = this.page.getByText('Copropiedad creada correctamente!', { exact: false });
+        await successMessage.waitFor({ state: 'visible', timeout: 25000 });
         const isVisible = await successMessage.isVisible();
         if (isVisible) {
-          console.log('✅ Mensaje de éxito "Copropiedad creada correctamente!" encontrado en SweetAlert');
+          console.log('✅ Mensaje de éxito encontrado (texto exacto)');
         } else {
           throw new Error('El mensaje no es visible');
         }
       } catch (e) {
-        // Estrategia 2: Buscar cualquier elemento que contenga el texto exacto
+        // Estrategia alternativa: Buscar con regex en cualquier parte
         try {
-          const successMessage2 = this.page.getByText('Copropiedad creada correctamente!', { exact: false });
+          const successMessage2 = this.page.locator('text=/Copropiedad creada correctamente/i');
           await successMessage2.waitFor({ state: 'visible', timeout: 25000 });
           const isVisible = await successMessage2.isVisible();
           if (isVisible) {
-            console.log('✅ Mensaje de éxito encontrado (texto exacto)');
+            console.log('✅ Mensaje de éxito encontrado (regex)');
           } else {
             throw new Error('El mensaje no es visible');
           }
         } catch (e2) {
-          // Estrategia 3: Buscar con regex en cualquier parte
+          // Estrategia alternativa: Buscar en el modal de SweetAlert con selector más amplio
           try {
-            const successMessage3 = this.page.locator('text=/Copropiedad creada correctamente/i');
-            await successMessage3.waitFor({ state: 'visible', timeout: 25000 });
-            const isVisible = await successMessage3.isVisible();
+            const successModal = this.page.locator('.swal2-html-container')
+              .or(this.page.locator('#swal2-html-container'))
+              .filter({ hasText: /copropiedad.*creada/i });
+            await successModal.waitFor({ state: 'visible', timeout: 25000 });
+            const isVisible = await successModal.isVisible();
             if (isVisible) {
-              console.log('✅ Mensaje de éxito encontrado (regex)');
+              console.log('✅ Mensaje de éxito encontrado en modal SweetAlert');
             } else {
               throw new Error('El mensaje no es visible');
             }
           } catch (e3) {
-            // Estrategia 4: Buscar en el modal de SweetAlert con selector más amplio
-            try {
-              const successModal = this.page.locator('.swal2-html-container')
-                .or(this.page.locator('#swal2-html-container'))
-                .filter({ hasText: /copropiedad.*creada/i });
-              await successModal.waitFor({ state: 'visible', timeout: 25000 });
-              const isVisible = await successModal.isVisible();
-              if (isVisible) {
-                console.log('✅ Mensaje de éxito encontrado en modal SweetAlert');
-              } else {
-                throw new Error('El mensaje no es visible');
-              }
-            } catch (e4) {
-              throw new Error(`El mensaje de éxito "Copropiedad creada correctamente!" no apareció después de esperar: ${e4}`);
-            }
+            throw new Error(`El mensaje de éxito "Copropiedad creada correctamente!" no apareció después de esperar: ${e3}`);
           }
         }
       }
