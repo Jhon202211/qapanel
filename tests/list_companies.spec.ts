@@ -1,4 +1,11 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Cargar variables de entorno
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 
 // slowMo se configura automáticamente desde playwright.config.ts
 // cuando se ejecuta con la variable de entorno SLOW_MO
@@ -6,7 +13,7 @@ import { test, expect } from '@playwright/test';
 test('Listar empresas', async ({ page }) => {
   try {
     // ========== VISTA 1: LOGIN ==========
-    await page.goto('https://yanine.queo.dev/login');
+    await page.goto(`${BASE_URL}/login`);
     await page.waitForLoadState('networkidle');
     
     // Validar elementos del login
