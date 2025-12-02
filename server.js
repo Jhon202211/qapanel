@@ -29,14 +29,17 @@ app.post('/api/run-command', async (req, res) => {
     // Para comandos de codegen, usar spawn para mejor manejo
     if (command.includes('codegen')) {
         const { spawn } = require('child_process');
-        const codegenProcess = spawn('npx', command.split(' ').slice(1), { 
+
+        // Usar npx.cmd en Windows, npx en otros SO
+        const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
+        const args = command.split(' ').slice(1);
+
+        // IMPORTANTE: sin detached y sin stdio raro para evitar EINVAL en Windows
+        const codegenProcess = spawn(npxCommand, args, {
             cwd: __dirname,
-            stdio: 'pipe',
-            detached: true
+            shell: true
         });
 
-        // No matar el proceso automáticamente - dejar que el usuario lo controle
-        // El proceso se mantendrá vivo hasta que el usuario lo cierre manualmente
         codegenProcess.on('close', (code) => {
             console.log(`Proceso de codegen terminado con código: ${code}`);
         });
@@ -45,8 +48,8 @@ app.post('/api/run-command', async (req, res) => {
             console.error(`Error en proceso de codegen: ${error}`);
         });
 
-        res.json({ 
-            success: true, 
+        res.json({
+            success: true,
             stdout: 'Codegen iniciado. El navegador y la ventana de código permanecerán abiertos hasta que los cierres manualmente.',
             command: command,
             processId: codegenProcess.pid
@@ -73,25 +76,154 @@ app.post('/api/run-command', async (req, res) => {
             });
         });
     } else {
-        // Para otros comandos, usar exec normal
-        exec(command, { cwd: __dirname }, (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error ejecutando comando: ${error}`);
-                res.status(500).json({ 
-                    error: error.message, 
-                    stderr: stderr,
-                    command: command 
-                });
+        const isTestCommand = command.includes('playwright test');
+        
+        console.log(`[SERVER] Iniciando ejecución del comando: ${command}`);
+        console.log(`[SERVER] Es comando de test: ${isTestCommand}`);
+        
+        const { spawn } = require('child_process');
+        const isWindows = process.platform === 'win32';
+        
+        // Dividir el comando en partes para spawn
+        const parts = command.split(' ');
+        const mainCommand = parts[0];
+        const args = parts.slice(1);
+        
+        // Usar cmd en Windows para comandos que empiezan con npx
+        const commandToRun = isWindows && mainCommand === 'npx' ? 'npx.cmd' : mainCommand;
+        
+        console.log(`[SERVER] Ejecutando: ${commandToRun}`, args);
+        
+        const childProcess = spawn(commandToRun, args, {
+            cwd: __dirname,
+            shell: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: false
+        });
+        
+        let stdout = '';
+        let stderr = '';
+        let testCompleted = false;
+        let responseSent = false;
+        
+        const sendResponse = (testFailed) => {
+            if (responseSent) {
+                console.log(`[SERVER] Respuesta ya enviada, ignorando`);
                 return;
             }
-
-            console.log(`Comando ejecutado exitosamente: ${command}`);
+            
+            responseSent = true;
+            clearTimeout(processTimeout);
+            
+            console.log(`[SERVER] Enviando respuesta al cliente...`);
             res.json({ 
                 success: true, 
-                stdout: stdout, 
-                stderr: stderr,
-                command: command 
+                stdout: stdout || '', 
+                stderr: stderr || '',
+                command: command,
+                testFailed: testFailed
             });
+            console.log(`[SERVER] Respuesta enviada`);
+        };
+        
+        childProcess.stdout.on('data', (data) => {
+            const output = data.toString();
+            stdout += output;
+            console.log(`[SERVER] stdout:`, output.substring(0, 200));
+            
+            if (isTestCommand) {
+                // Detectar cuando el test realmente terminó (antes del servidor del reporte)
+                // Playwright muestra estos patrones cuando el test termina:
+                if (output.includes('failed') || output.includes('passed')) {
+                    // Contar cuántos tests pasaron/fallaron
+                    const failedMatch = output.match(/(\d+)\s+failed/);
+                    const passedMatch = output.match(/(\d+)\s+passed/);
+                    
+                    if (failedMatch || passedMatch) {
+                        console.log(`[SERVER] Test completado detectado en stdout`);
+                        // Esperar un poco más para capturar toda la salida
+                        setTimeout(() => {
+                            if (!responseSent) {
+                                const testFailed = failedMatch && parseInt(failedMatch[1]) > 0;
+                                sendResponse(testFailed);
+                            }
+                        }, 1000); // Esperar 1 segundo para capturar toda la salida
+                    }
+                }
+                
+                // Si aparece el mensaje del servidor del reporte, el test ya terminó
+                if (output.includes('Serving HTML report')) {
+                    console.log(`[SERVER] Detectado servidor del reporte - test ya terminó`);
+                    if (!responseSent) {
+                        // Determinar si falló basándose en la salida anterior
+                        const testFailed = stdout.includes('failed') && !stdout.includes('0 failed');
+                        sendResponse(testFailed);
+                    }
+                }
+            }
+        });
+        
+        childProcess.stderr.on('data', (data) => {
+            const output = data.toString();
+            stderr += output;
+            console.log(`[SERVER] stderr:`, output.substring(0, 200));
+        });
+        
+        // Timeout de seguridad
+        const processTimeout = setTimeout(() => {
+            console.log(`[SERVER] Timeout: proceso tomando demasiado tiempo`);
+            if (!responseSent) {
+                testCompleted = true;
+                try {
+                    childProcess.kill('SIGTERM');
+                    setTimeout(() => {
+                        if (!childProcess.killed) {
+                            childProcess.kill('SIGKILL');
+                        }
+                    }, 5000);
+                } catch (e) {
+                    console.error(`[SERVER] Error al matar proceso:`, e);
+                }
+                
+                sendResponse(true); // Asumir que falló por timeout
+            }
+        }, 5 * 60 * 1000);
+        
+        childProcess.on('close', (code, signal) => {
+            clearTimeout(processTimeout);
+            testCompleted = true;
+            
+            console.log(`[SERVER] Proceso terminado con código: ${code}, signal: ${signal}`);
+            
+            // Si aún no se envió respuesta, enviarla ahora
+            if (!responseSent) {
+                const testFailed = isTestCommand && code !== 0;
+                sendResponse(testFailed);
+            }
+        });
+        
+        childProcess.on('exit', (code, signal) => {
+            console.log(`[SERVER] Proceso exit con código: ${code}, signal: ${signal}`);
+        });
+        
+        childProcess.on('error', (error) => {
+            clearTimeout(processTimeout);
+            testCompleted = true;
+            console.error(`[SERVER] Error en proceso:`, error);
+            
+            if (!responseSent) {
+                if (isTestCommand) {
+                    sendResponse(true);
+                } else {
+                    res.status(500).json({ 
+                        success: false,
+                        error: error.message, 
+                        stderr: stderr,
+                        command: command 
+                    });
+                    responseSent = true;
+                }
+            }
         });
     }
 });
