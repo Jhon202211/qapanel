@@ -42,6 +42,24 @@
             margin-bottom: 10px;
             font-weight: 400;
             color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .header h1 img {
+            height: 1.2em;
+            width: auto;
+            vertical-align: middle;
+        }
+
+        .header .version {
+            color: #666666;
+            font-size: 0.95em;
+            margin-bottom: 8px;
+            font-weight: 500;
+            opacity: 0.9;
         }
 
         .header p {
@@ -95,7 +113,7 @@
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             gap: 8px;
             text-decoration: none;
             background: #ffffff;
@@ -329,8 +347,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎭 Panel de Control Playwright</h1>
-            <p>Gestiona tus pruebas automatizadas de manera sencilla</p>
+            <h1><img src="src/queosmall.svg" alt="Queo"> Panel de Control Playwright</h1>
+            <p class="version">Versión v1.2</p>
         </div>
 
         <div class="panel">
