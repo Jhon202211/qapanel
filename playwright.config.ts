@@ -31,18 +31,17 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
     
-    /* Ejecutar en modo visible para poder observar el navegador */
-    headless: false,
-    
-    /* Velocidad más lenta para mejor observación */
-    slowMo: 1000,
+    // slowMo se pasa ahora como flag en el comando, no es necesario aquí
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        // slowMo removido - se configura en el test específico
+      },
     },
     /* Deshabilitado temporalmente hasta estabilizar  todos los tests 
     {
