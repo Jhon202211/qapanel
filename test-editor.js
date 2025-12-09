@@ -45,7 +45,11 @@ async function loadTest() {
         return;
     }
     
+    // Verificar si hay un proceso de codegen activo
+    // Si el archivo seleccionado es el mismo que codegen está escribiendo, advertir
     try {
+        // Intentar leer el estado del servidor para ver si codegen está activo
+        // Por ahora solo cargamos el test normalmente
         const response = await fetch('/api/read-test', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -57,6 +61,9 @@ async function loadTest() {
             if (result.success) {
                 codeArea.value = result.content;
                 appendOutput(`✅ Test cargado: ${selectedTest}`);
+                
+                // Advertencia si el archivo podría estar siendo escrito por codegen
+                appendOutput(`⚠️ Nota: Si codegen está activo, los cambios se guardarán automáticamente.`);
             } else {
                 throw new Error(result.error);
             }
@@ -65,6 +72,11 @@ async function loadTest() {
         }
     } catch (error) {
         appendOutput(`❌ Error cargando test: ${error.message}`);
+        
+        // Si el error es por archivo bloqueado, sugerir esperar
+        if (error.message.includes('EBUSY') || error.message.includes('EACCES')) {
+            appendOutput(`💡 El archivo podría estar siendo escrito por codegen. Intenta de nuevo en unos segundos.`);
+        }
     }
 }
 
@@ -115,6 +127,10 @@ function saveTestChanges() {
 // Recargar la lista de tests
 function reloadTestList() {
     loadTestList();
+    // También recargar el selector de continuar grabación si existe la función
+    if (typeof loadContinueTestSelector === 'function') {
+        loadContinueTestSelector();
+    }
     appendOutput('🔄 Lista de tests recargada');
 }
 

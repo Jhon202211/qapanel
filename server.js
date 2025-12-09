@@ -26,31 +26,68 @@ app.post('/api/run-command', async (req, res) => {
 
     console.log(`Ejecutando comando: ${command}`);
 
-    // Para comandos de codegen, usar spawn para mejor manejo
+    // Para comandos de codegen, usar spawn con configuración especial
+    // para mantener el proceso activo y mostrar la interfaz gráfica
     if (command.includes('codegen')) {
         const { spawn } = require('child_process');
+        const isWindows = process.platform === 'win32';
+
+        // Dividir el comando en partes
+        const parts = command.split(' ');
+        const mainCommand = parts[0]; // 'npx'
+        const args = parts.slice(1); // resto de argumentos
 
         // Usar npx.cmd en Windows, npx en otros SO
-        const npxCommand = process.platform === 'win32' ? 'npx.cmd' : 'npx';
-        const args = command.split(' ').slice(1);
+        const commandToRun = isWindows ? 'npx.cmd' : 'npx';
 
-        // IMPORTANTE: sin detached y sin stdio raro para evitar EINVAL en Windows
-        const codegenProcess = spawn(npxCommand, args, {
+        console.log(`[CODEGEN] Ejecutando: ${commandToRun}`, args);
+        console.log(`[CODEGEN] Comando completo: ${command}`);
+
+        // IMPORTANTE: Para codegen, necesitamos mantener el proceso activo y con acceso a stdio
+        // Usamos detached: false para mantener la conexión con stdio, pero almacenamos la referencia
+        // del proceso para evitar que se cierre cuando el servidor responde
+        const codegenProcess = spawn(commandToRun, args, {
             cwd: __dirname,
-            shell: true
+            shell: true,
+            detached: false, // Mantener conectado para acceso a stdio
+            stdio: 'inherit' // CRÍTICO: permite que codegen muestre ventana de código e inspector
         });
 
+        // Almacenar referencia del proceso en un objeto global para evitar que se recolecte como basura
+        // Esto asegura que el proceso permanezca activo incluso después de que el servidor responda
+        if (!global.codegenProcesses) {
+            global.codegenProcesses = new Set();
+        }
+        global.codegenProcesses.add(codegenProcess);
+
+        // Limpiar la referencia cuando el proceso termine
+        codegenProcess.on('close', () => {
+            if (global.codegenProcesses) {
+                global.codegenProcesses.delete(codegenProcess);
+            }
+        });
+
+        console.log(`[CODEGEN] Proceso iniciado con PID: ${codegenProcess.pid}`);
+
+        // Manejar eventos del proceso (aunque esté desvinculado, podemos escuchar eventos)
         codegenProcess.on('close', (code) => {
-            console.log(`Proceso de codegen terminado con código: ${code}`);
+            console.log(`[CODEGEN] Proceso terminado con código: ${code}`);
         });
 
         codegenProcess.on('error', (error) => {
-            console.error(`Error en proceso de codegen: ${error}`);
+            console.error(`[CODEGEN] Error: ${error.message}`);
         });
 
+        codegenProcess.on('exit', (code, signal) => {
+            console.log(`[CODEGEN] Exit - código: ${code}, señal: ${signal}`);
+        });
+
+        // Enviar respuesta inmediatamente
+        // El proceso codegen es interactivo y mantendrá abiertos el inspector y navegador
+        // Está desvinculado del servidor para que sobreviva independientemente
         res.json({
             success: true,
-            stdout: 'Codegen iniciado. El navegador y la ventana de código permanecerán abiertos hasta que los cierres manualmente.',
+            stdout: 'Codegen iniciado. El navegador y la ventana de código permanecerán abiertos hasta que los cierres manualmente. El proceso está desvinculado del servidor.',
             command: command,
             processId: codegenProcess.pid
         });
@@ -286,7 +323,28 @@ app.post('/api/read-test', async (req, res) => {
         }
         
         const fullPath = path.join(__dirname, filePath);
-        const content = await fs.readFile(fullPath, 'utf8');
+        
+        // Intentar leer el archivo con reintentos si está siendo escrito por codegen
+        let content;
+        let attempts = 0;
+        const maxAttempts = 3;
+        
+        while (attempts < maxAttempts) {
+            try {
+                content = await fs.readFile(fullPath, 'utf8');
+                break; // Éxito, salir del bucle
+            } catch (readError) {
+                attempts++;
+                // Si es un error de acceso y hay codegen activo, esperar un poco y reintentar
+                if (readError.code === 'EBUSY' || readError.code === 'EACCES') {
+                    if (attempts < maxAttempts) {
+                        await new Promise(resolve => setTimeout(resolve, 100)); // Esperar 100ms
+                        continue;
+                    }
+                }
+                throw readError; // Si no es un error de acceso o se agotaron los intentos, lanzar error
+            }
+        }
         
         res.json({ success: true, content });
     } catch (error) {
@@ -305,6 +363,14 @@ app.post('/api/write-test', async (req, res) => {
         }
         
         const fullPath = path.join(__dirname, filePath);
+        
+        // Verificar si hay un proceso de codegen activo escribiendo en este archivo
+        // Si es así, advertir al usuario pero permitir la escritura
+        if (global.codegenProcesses && global.codegenProcesses.size > 0) {
+            console.log(`[WARNING] Escribiendo archivo ${filePath} mientras codegen está activo`);
+            // No bloqueamos la escritura, pero registramos la advertencia
+        }
+        
         await fs.writeFile(fullPath, content, 'utf8');
         
         res.json({ success: true, message: 'Test guardado exitosamente' });

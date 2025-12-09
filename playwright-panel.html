@@ -412,6 +412,33 @@
                         Grabar en Firefox
                     </button>
                 </div>
+                
+                <!-- Continuar grabación -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                    <label for="continueTestSelector" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                        ▶️ Continuar grabación de test existente:
+                    </label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select 
+                            id="continueTestSelector" 
+                            class="test-selector"
+                            style="flex: 1; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px; background: white;"
+                        >
+                            <option value="">Seleccionar test para continuar...</option>
+                        </select>
+                        <button 
+                            class="btn-pill btn btn-orange" 
+                            onclick="continueRecording()"
+                            style="padding: 10px 20px;"
+                        >
+                            <span class="icon">▶️</span>
+                            Continuar Grabación
+                        </button>
+                    </div>
+                    <small style="color: #6c757d; display: block; margin-top: 5px;">
+                        Selecciona un test existente para continuar grabando desde donde lo dejaste
+                    </small>
+                </div>
             </div>
 
             <!-- Sección de Utilidades -->
@@ -661,14 +688,19 @@
                                 attempts++;
                                 try {
                                     // Verificar si el archivo existe consultando la API
+                                    // IMPORTANTE: Solo listar tests, NO leer el contenido del archivo
+                                    // para evitar interferir con codegen que está escribiendo
                                     const response = await fetch('/api/list-tests');
                                     if (response.ok) {
                                         const tests = await response.json();
                                         const testExists = tests.some(t => t.name === testName);
                                         
                                         if (testExists || attempts >= maxAttempts) {
+                                            // Solo actualizar la lista de botones, NO cargar el contenido del archivo
                                             loadTestButtons();
+                                            loadContinueTestSelector(); // Actualizar también el selector de continuar
                                             appendOutput(`🔄 Lista de tests actualizada${testExists ? ' - Nuevo test encontrado!' : ''}`);
+                                            appendOutput(`💡 Codegen sigue activo. El archivo se actualiza automáticamente mientras grabas.`);
                                         } else {
                                             // Intentar de nuevo en 1 segundo
                                             setTimeout(checkAndRefresh, 1000);
@@ -678,7 +710,10 @@
                                     console.error('Error verificando tests:', error);
                                     // Si falla, refrescar de todas formas después de 3 segundos
                                     if (attempts === 1) {
-                                        setTimeout(() => loadTestButtons(), 3000);
+                                        setTimeout(() => {
+                                            loadTestButtons();
+                                            loadContinueTestSelector();
+                                        }, 3000);
                                     }
                                 }
                             };
@@ -809,9 +844,121 @@
             }
         }
 
+        // Cargar lista de tests en el selector de continuar grabación
+        async function loadContinueTestSelector() {
+            const selector = document.getElementById('continueTestSelector');
+            if (!selector) return;
+            
+            try {
+                const response = await fetch('/api/list-tests');
+                if (response.ok) {
+                    const tests = await response.json();
+                    
+                    // Limpiar opciones existentes (excepto la primera)
+                    selector.innerHTML = '<option value="">Seleccionar test para continuar...</option>';
+                    
+                    // Agregar cada test como opción
+                    tests.forEach(test => {
+                        const option = document.createElement('option');
+                        option.value = test.path;
+                        option.textContent = test.name;
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando lista de tests para continuar:', error);
+            }
+        }
+
+        // Función para continuar grabando un test existente
+        async function continueRecording() {
+            const selector = document.getElementById('continueTestSelector');
+            const testPath = selector?.value;
+            
+            if (!testPath) {
+                alert('⚠️ Por favor, selecciona un test para continuar grabando.');
+                return;
+            }
+            
+            try {
+                updateStatus('Leyendo test existente...', 'running');
+                appendOutput(`\n📖 Leyendo test: ${testPath}`);
+                
+                // Leer el contenido del test
+                const response = await fetch('/api/read-test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filePath: testPath })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+                
+                const testContent = result.content;
+                
+                // Extraer la última URL visitada del test (buscar todas las ocurrencias de page.goto)
+                let targetUrl = 'https://alex.queo.dev'; // URL por defecto
+                const gotoMatches = testContent.matchAll(/page\.goto\(['"`]([^'"`]+)['"`]\)/g);
+                const allUrls = Array.from(gotoMatches).map(match => match[1]);
+                
+                if (allUrls.length > 0) {
+                    // Usar la última URL visitada para continuar desde ahí
+                    targetUrl = allUrls[allUrls.length - 1];
+                    appendOutput(`✅ Última URL detectada: ${targetUrl}`);
+                } else {
+                    // Si no hay URLs, buscar BASE_URL en el código
+                    const baseUrlMatch = testContent.match(/BASE_URL\s*=\s*process\.env\.BASE_URL\s*\|\|\s*['"`]([^'"`]+)['"`]/);
+                    if (baseUrlMatch) {
+                        targetUrl = baseUrlMatch[1];
+                        appendOutput(`✅ BASE_URL detectada: ${targetUrl}`);
+                    } else {
+                        appendOutput(`⚠️ No se detectó URL específica, usando URL por defecto: ${targetUrl}`);
+                    }
+                }
+                
+                appendOutput(`📝 Continuando grabación desde: ${targetUrl}`);
+                appendOutput(`📄 Archivo original: ${testPath}`);
+                
+                // Crear un nombre de archivo temporal para el output
+                // Esto permite que codegen funcione correctamente sin sobrescribir el archivo original
+                const pathParts = testPath.split('/');
+                const fileName = pathParts[pathParts.length - 1];
+                const tempFileName = fileName.replace('.spec.ts', '_temp_continue.spec.ts');
+                const tempOutputPath = `tests/${tempFileName}`;
+                
+                appendOutput(`📝 Archivo temporal para código nuevo: ${tempOutputPath}`);
+                appendOutput(`\n⚠️ INSTRUCCIONES:`);
+                appendOutput(`   1. Graba las acciones adicionales en el inspector`);
+                appendOutput(`   2. Al terminar, el código nuevo estará en: ${tempOutputPath}`);
+                appendOutput(`   3. Abre ambos archivos en el Editor de Tests`);
+                appendOutput(`   4. Copia el código nuevo del archivo temporal`);
+                appendOutput(`   5. Pégalo al final del archivo original: ${testPath}`);
+                appendOutput(`   6. Guarda los cambios y elimina el archivo temporal si lo deseas`);
+                
+                // Construir comando codegen con --output apuntando a un archivo temporal
+                // Esto permite que codegen funcione correctamente sin sobrescribir el original
+                const command = `npx playwright codegen ${targetUrl} --target=playwright-test --output=${tempOutputPath}`;
+                
+                runCommandReal(command, `Continuar grabación: ${testPath}`);
+                
+            } catch (error) {
+                appendOutput(`❌ Error: ${error.message}`);
+                updateStatus(`Error al continuar grabación`, 'error');
+            }
+        }
+
         // Cargar tests al iniciar la página
         document.addEventListener('DOMContentLoaded', () => {
             loadTestButtons();
+            loadContinueTestSelector();
             
             // Actualizar el texto del label según el estado del checkbox
             const toggle = document.getElementById('showBrowserToggle');
@@ -936,6 +1083,8 @@
         };
 
         window.clearOutput = clearOutput;
+        window.continueRecording = continueRecording;
+        window.loadContinueTestSelector = loadContinueTestSelector;
     </script>
     
     <!-- Script del Editor de Tests -->
