@@ -39,4 +39,16 @@ test('test', async ({ page }) => {
   await page.getByText('NIT').click();
   await page.getByText('Directorio Activo: Google').click();
   await page.getByText('Calendario: Google').click();
+//============Busqueda de otra property==============
+  await page.getByRole('textbox', { name: 'Escriba el término para' }).click();
+  await page.getByRole('textbox', { name: 'Escriba el término para' }).fill('staging');
+  await page.getByText('NIT').click();
+  await page.getByText('Directorio Activo: Microsoft').click();
+  await page.getByText('Calendario: Microsoft').click();
+  await page.getByRole('link', { name: 'Automatics QA Admin' }).click();
+  await page.getByRole('button', { name: ' Salir' }).click();
+
+  // ---------------------
+  await page.close();
+  await page.close();
 });
