@@ -906,19 +906,44 @@
                 
                 // Extraer la última URL visitada del test (buscar todas las ocurrencias de page.goto)
                 let targetUrl = 'https://alex.queo.dev'; // URL por defecto
-                const gotoMatches = testContent.matchAll(/page\.goto\(['"`]([^'"`]+)['"`]\)/g);
-                const allUrls = Array.from(gotoMatches).map(match => match[1]);
+                let baseUrl = 'https://alex.queo.dev'; // BASE_URL por defecto
+                
+                // Primero, buscar BASE_URL en el código
+                const baseUrlMatch = testContent.match(/BASE_URL\s*=\s*process\.env\.BASE_URL\s*\|\|\s*['"`]([^'"`]+)['"`]/);
+                if (baseUrlMatch) {
+                    baseUrl = baseUrlMatch[1];
+                    appendOutput(`✅ BASE_URL detectada: ${baseUrl}`);
+                }
+                
+                // Buscar todas las ocurrencias de page.goto (incluyendo template literals)
+                const gotoRegex = /page\.goto\([`'"](\$\{BASE_URL\}[^`'"]+|[^`'"]+)['"`]\)/g;
+                const allUrls = [];
+                let match;
+                
+                while ((match = gotoRegex.exec(testContent)) !== null) {
+                    let url = match[1];
+                    // Si la URL contiene ${BASE_URL}, reemplazarla con el valor real
+                    if (url.includes('${BASE_URL}')) {
+                        url = url.replace(/\$\{BASE_URL\}/g, baseUrl);
+                    }
+                    allUrls.push(url);
+                }
                 
                 if (allUrls.length > 0) {
                     // Usar la última URL visitada para continuar desde ahí
                     targetUrl = allUrls[allUrls.length - 1];
                     appendOutput(`✅ Última URL detectada: ${targetUrl}`);
                 } else {
-                    // Si no hay URLs, buscar BASE_URL en el código
-                    const baseUrlMatch = testContent.match(/BASE_URL\s*=\s*process\.env\.BASE_URL\s*\|\|\s*['"`]([^'"`]+)['"`]/);
-                    if (baseUrlMatch) {
-                        targetUrl = baseUrlMatch[1];
-                        appendOutput(`✅ BASE_URL detectada: ${targetUrl}`);
+                    // Si no hay URLs con page.goto, buscar URLs en template literals
+                    const templateRegex = /`\$\{BASE_URL\}([^`]+)`/g;
+                    const templateUrls = [];
+                    while ((match = templateRegex.exec(testContent)) !== null) {
+                        templateUrls.push(baseUrl + match[1]);
+                    }
+                    
+                    if (templateUrls.length > 0) {
+                        targetUrl = templateUrls[templateUrls.length - 1];
+                        appendOutput(`✅ URL detectada desde template literal: ${targetUrl}`);
                     } else {
                         appendOutput(`⚠️ No se detectó URL específica, usando URL por defecto: ${targetUrl}`);
                     }
@@ -927,27 +952,80 @@
                 appendOutput(`📝 Continuando grabación desde: ${targetUrl}`);
                 appendOutput(`📄 Archivo original: ${testPath}`);
                 
-                // Crear un nombre de archivo temporal para el output
-                // Esto permite que codegen funcione correctamente sin sobrescribir el archivo original
+                // Crear un nombre de archivo temporal para trabajar
                 const pathParts = testPath.split('/');
                 const fileName = pathParts[pathParts.length - 1];
                 const tempFileName = fileName.replace('.spec.ts', '_temp_continue.spec.ts');
                 const tempOutputPath = `tests/${tempFileName}`;
                 
-                appendOutput(`📝 Archivo temporal para código nuevo: ${tempOutputPath}`);
-                appendOutput(`\n⚠️ INSTRUCCIONES:`);
-                appendOutput(`   1. Graba las acciones adicionales en el inspector`);
-                appendOutput(`   2. Al terminar, el código nuevo estará en: ${tempOutputPath}`);
-                appendOutput(`   3. Abre ambos archivos en el Editor de Tests`);
-                appendOutput(`   4. Copia el código nuevo del archivo temporal`);
-                appendOutput(`   5. Pégalo al final del archivo original: ${testPath}`);
-                appendOutput(`   6. Guarda los cambios y elimina el archivo temporal si lo deseas`);
+                appendOutput(`📝 Archivo temporal: ${tempOutputPath}`);
+                appendOutput(`📋 Preparando código existente con inspector...`);
                 
-                // Construir comando codegen con --output apuntando a un archivo temporal
-                // Esto permite que codegen funcione correctamente sin sobrescribir el original
-                const command = `npx playwright codegen ${targetUrl} --target=playwright-test --output=${tempOutputPath}`;
+                // Modificar el código para agregar page.pause() al inicio del primer test
+                // Esto abrirá el inspector cuando se ejecute con --debug
+                let modifiedContent = testContent;
                 
-                runCommandReal(command, `Continuar grabación: ${testPath}`);
+                // Buscar el primer test y agregar page.pause() después de la declaración async
+                // Patrón: test('nombre', async ({ page }) => { ... })
+                const testPattern = /(test\([^)]+\)\s*async\s*\(\s*\{\s*page\s*\}\s*\)\s*\{)/;
+                if (testPattern.test(modifiedContent)) {
+                    // Agregar page.pause() justo después de abrir el test
+                    modifiedContent = modifiedContent.replace(
+                        testPattern,
+                        `$1\n    // Inspector abierto para continuar grabando\n    await page.pause();`
+                    );
+                } else {
+                    // Si no encontramos el patrón estándar, agregar al inicio del archivo después de imports
+                    const importEnd = modifiedContent.lastIndexOf('import');
+                    if (importEnd !== -1) {
+                        const nextLine = modifiedContent.indexOf('\n', importEnd);
+                        if (nextLine !== -1) {
+                            modifiedContent = modifiedContent.slice(0, nextLine + 1) + 
+                                `\n// El inspector se abrirá automáticamente al ejecutar con --debug\n` +
+                                modifiedContent.slice(nextLine + 1);
+                        }
+                    }
+                }
+                
+                // Escribir el contenido modificado al archivo temporal
+                try {
+                    const writeResponse = await fetch('/api/write-test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            filePath: tempOutputPath,
+                            content: modifiedContent
+                        })
+                    });
+                    
+                    if (!writeResponse.ok) {
+                        const writeResult = await writeResponse.json();
+                        throw new Error(writeResult.error || 'Error al escribir archivo temporal');
+                    }
+                    
+                    appendOutput(`✅ Código existente preparado con inspector`);
+                    appendOutput(`\n💡 INSTRUCCIONES:`);
+                    appendOutput(`   1. Se abrirá el inspector de Playwright con el código del test cargado`);
+                    appendOutput(`   2. El test se pausará automáticamente al inicio`);
+                    appendOutput(`   3. Verás TODO el código del test en el inspector`);
+                    appendOutput(`   4. Puedes editar el código directamente en el inspector`);
+                    appendOutput(`   5. Usa el botón "Record" para grabar nuevas acciones`);
+                    appendOutput(`   6. Continúa ejecutando paso a paso o graba nuevas acciones`);
+                    appendOutput(`   7. Al terminar, el código completo estará en: ${tempOutputPath}`);
+                    appendOutput(`   8. Copia al archivo original si es necesario y elimina el temporal`);
+                    
+                    // Usar playwright test --debug que abre el inspector con el código cargado
+                    // El page.pause() hará que se pause al inicio mostrando todo el código
+                    const command = `npx playwright test ${tempOutputPath} --debug`;
+                    
+                    runCommandReal(command, `Continuar grabación: ${testPath}`);
+                    
+                } catch (writeError) {
+                    appendOutput(`❌ Error al preparar archivo temporal: ${writeError.message}`);
+                    updateStatus(`Error al continuar grabación`, 'error');
+                }
                 
             } catch (error) {
                 appendOutput(`❌ Error: ${error.message}`);
