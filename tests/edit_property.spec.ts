@@ -8,9 +8,10 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const USER_EMAIL = process.env.USER_EMAIL || '';
 const USER_PASSWORD = process.env.USER_PASSWORD || '';
 const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
-
+const PROPERTY_TO_EDIT = process.env.PROPERTY_TO_EDIT || '';
 test('Editar propiedad', async ({ page }) => {
   try {
+
     // ========== VISTA 1: LOGIN ==========
     await page.goto(`${BASE_URL}/login`);
     await page.waitForLoadState('networkidle');
@@ -34,7 +35,33 @@ test('Editar propiedad', async ({ page }) => {
     await page.waitForLoadState('networkidle');
     
     // Aquí puedes agregar los pasos para editar la propiedad
-    // Por ejemplo: buscar la propiedad, hacer click en editar, modificar campos, etc.
+    
+    await page.getByRole('textbox', { name: 'Escriba el término para' }).click();
+    await page.getByRole('textbox', { name: 'Escriba el término para' }).fill(PROPERTY_TO_EDIT);
+    await page.waitForTimeout(1000);
+    
+    // Hacer click en la propiedad encontrada
+    await page.getByText('QA Prueba Auto (No tocar)').click();
+    await page.waitForTimeout(1000);
+    
+    // Buscar el NIT dentro del contexto de la propiedad seleccionada
+    // Usar first() para seleccionar el primer NIT visible después de seleccionar la propiedad
+    await page.getByText('NIT').first().click();
+    await page.waitForTimeout(500);
+    
+    // Buscar el botón de editar usando un selector más específico
+    // El testId 'button-undefined' puede no ser confiable, intentar buscar por texto o rol
+    const editButton = page.getByTestId('button-undefined').or(page.getByRole('button', { name: /editar|edit/i })).first();
+    await editButton.click();
+    await page.waitForTimeout(1000);
+    await page.getByTestId('input-phone').click();
+    await page.getByTestId('input-phone').fill('1234569999');
+    await page.getByRole('button', { name: 'Editar datos básicos' }).click();
+    await page.getByRole('button', { name: 'OK' }).click();
+  
+    // ---------------------
+  
+
     
   } catch (error) {
     console.log('❌ Test falló. Pausando para debug...');
