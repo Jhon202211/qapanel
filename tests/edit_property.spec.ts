@@ -11,6 +11,18 @@ const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 const PROPERTY_TO_EDIT = process.env.PROPERTY_TO_EDIT || '';
 test('Editar propiedad', async ({ page }) => {
   try {
+    // Maximizar la ventana del navegador a pantalla completa
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    // También intentar maximizar si es posible
+    try {
+      await page.evaluate(() => {
+        if (window.screen && window.screen.availWidth && window.screen.availHeight) {
+          window.resizeTo(window.screen.availWidth, window.screen.availHeight);
+        }
+      });
+    } catch (e) {
+      // Ignorar si no se puede maximizar
+    }
 
     // ========== VISTA 1: LOGIN ==========
     await page.goto(`${BASE_URL}/login`);
