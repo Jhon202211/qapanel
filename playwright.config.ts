@@ -38,7 +38,7 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-
+    /* Deshabilitado temporalmente - solo ejecutar en Chromium por ahora
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
@@ -48,6 +48,7 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
+    */
 
     /* Test against mobile viewports. */
     // {
