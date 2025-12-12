@@ -12,7 +12,7 @@ import { defineConfig, devices } from '@playwright/test';
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
-  testDir: './tests',
+  testDir: './e2e',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -25,37 +25,29 @@ export default defineConfig({
   reporter: 'html',
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
-    /* Base URL to use in actions like `await page.goto('/')`. */
+    /* Base URL to use in actions like `await page.goto('')`. */
     // baseURL: 'http://localhost:3000',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
-    
-    // slowMo se pasa ahora como flag en el comando, no es necesario aquí
   },
 
   /* Configure projects for major browsers */
   projects: [
     {
       name: 'chromium',
-      use: { 
-        ...devices['Desktop Chrome'],
-        // slowMo removido - se configura en el test específico
-      },
+      use: { ...devices['Desktop Chrome'] },
     },
-    /* Deshabilitado temporalmente hasta estabilizar  todos los tests 
+
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    */
 
-    /* WebKit deshabilitado temporalmente por dependencias del sistema
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    */
 
     /* Test against mobile viewports. */
     // {

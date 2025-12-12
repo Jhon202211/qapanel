@@ -50,3 +50,9 @@ out/
 # Archivos de lock (opcional, algunos prefieren incluirlos)
 # package-lock.json
 # yarn.lock
+
+# Playwright
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/

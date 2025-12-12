@@ -23,7 +23,7 @@
   "license": "ISC",
   "description": "Proyecto de pruebas automatizadas con Playwright y panel de control web",
   "devDependencies": {
-    "@playwright/test": "^1.53.2",
+    "@playwright/test": "^1.57.0",
     "@types/node": "^24.0.12",
     "cross-env": "^10.1.0"
   },
