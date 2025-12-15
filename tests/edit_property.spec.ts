@@ -56,25 +56,96 @@ test('Editar propiedad', async ({ page }) => {
     await page.getByText('QA Prueba Auto (No tocar)').click();
     await page.waitForTimeout(1000);
     
-    // Buscar el NIT dentro del contexto de la propiedad seleccionada
-    // Usar first() para seleccionar el primer NIT visible después de seleccionar la propiedad
-    await page.getByText('NIT').first().click();
-    await page.waitForTimeout(500);
-    
-    // Buscar el botón de editar usando un selector más específico
-    // El testId 'button-undefined' puede no ser confiable, intentar buscar por texto o rol
+    // Buscar el botón de editar para entrar en modo edición
     const editButton = page.getByTestId('button-undefined').or(page.getByRole('button', { name: /editar|edit/i })).first();
+    await editButton.waitFor({ state: 'visible', timeout: 5000 });
     await editButton.click();
     await page.waitForTimeout(1000);
-    await page.getByTestId('input-phone').click();
-    await page.getByTestId('input-phone').fill('1234569999');
-    await page.getByRole('button', { name: 'Editar datos básicos' }).click();
-    await page.getByRole('button', { name: 'OK' }).click();
-  
-    // ---------------------
-  
-
     
+    // Generar valores aleatorios para NIT y Teléfono
+    const randomNit = Math.floor(1000000000 + Math.random() * 9000000000).toString(); // 10 dígitos
+    const randomPhone = Math.floor(1000000 + Math.random() * 9000000).toString(); // 7 dígitos
+    
+    // Buscar el campo NIT usando testId o label
+    const nitField = page.getByTestId('input-nit').or(page.locator('input[name="nit"]')).or(page.getByLabel(/nit/i));
+    await nitField.waitFor({ state: 'visible', timeout: 5000 });
+    await nitField.click();
+    await nitField.clear();
+    await nitField.fill(randomNit);
+    await page.waitForTimeout(500);
+    console.log(`✅ NIT aleatorio llenado: ${randomNit}`);
+    
+    // Buscar el campo Teléfono de contacto usando testId o label
+    const phoneField = page.getByTestId('input-phone').or(page.locator('input[name="phone"]')).or(page.getByLabel(/teléfono/i));
+    await phoneField.waitFor({ state: 'visible', timeout: 5000 });
+    await phoneField.click();
+    await phoneField.clear();
+    await phoneField.fill(randomPhone);
+    await page.waitForTimeout(500);
+    console.log(`✅ Teléfono aleatorio llenado: ${randomPhone}`);
+    
+    // Seleccionar Administrador/a usando React Select
+    try {
+      // Buscar el control de React Select para Administrador/a usando el label
+      const adminLabel = page.getByText('Administrador/a', { exact: false });
+      await adminLabel.waitFor({ state: 'visible', timeout: 5000 });
+      
+      // Buscar el control de React Select cerca del label
+      const adminControl = adminLabel.locator('..').locator('.react-select__control').first();
+      await adminControl.waitFor({ state: 'visible', timeout: 5000 });
+      await adminControl.click();
+      await page.waitForTimeout(500);
+      
+      // Buscar el input dentro del control
+      const adminInput = adminControl.locator('input').or(page.getByRole('textbox', { name: 'Administrador/a' })).first();
+      await adminInput.waitFor({ state: 'visible', timeout: 3000 });
+      await adminInput.fill('qa');
+      await page.waitForTimeout(1000);
+      
+      // Seleccionar la primera opción disponible (aleatoria)
+      await adminInput.press('ArrowDown');
+      await page.waitForTimeout(500);
+      await adminInput.press('Enter');
+      await page.waitForTimeout(1000);
+      console.log('✅ Administrador seleccionado');
+    } catch (e) {
+      console.log(`⚠️ No se pudo seleccionar administrador: ${e}, continuando...`);
+    }
+    
+
+    // Seleccionar una empresa aleatoria adicional usando el patrón del record
+    try {
+      // Hacer click en el SVG del dropdown de empresas (basado en el record)
+      await page.getByRole('tabpanel', { name: 'Datos básicos' }).locator('svg').nth(3).click();
+      await page.waitForTimeout(800);
+      
+      // Esperar a que aparezcan las opciones del dropdown
+      await page.waitForSelector('.react-select__option', { timeout: 3000 });
+      await page.waitForTimeout(500);
+      
+      // Obtener todas las opciones disponibles del dropdown
+      const companyOptions = page.locator('.react-select__option');
+      const optionsCount = await companyOptions.count();
+      
+      if (optionsCount > 0) {
+        // Seleccionar una opción aleatoria de la lista
+        const randomIndex = Math.floor(Math.random() * optionsCount);
+        await companyOptions.nth(randomIndex).click();
+        await page.waitForTimeout(1000);
+        console.log(`✅ Empresa adicional seleccionada (índice ${randomIndex})`);
+      } else {
+        console.log('⚠️ No se encontraron opciones de empresas disponibles');
+      }
+    } catch (e) {
+      console.log(`⚠️ No se pudo seleccionar empresa adicional: ${e}, continuando...`);
+    }
+
+
+    // Guardar los cambios
+    await page.getByRole('button', { name: 'Editar datos básicos' }).click();
+    await page.waitForTimeout(1000);
+    await page.getByRole('button', { name: 'OK' }).click();
+    await page.waitForTimeout(1000);
   } catch (error) {
     console.log('❌ Test falló. Pausando para debug...');
     await page.pause();
