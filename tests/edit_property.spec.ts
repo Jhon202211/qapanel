@@ -84,6 +84,49 @@ test('Editar propiedad', async ({ page }) => {
     await page.waitForTimeout(500);
     console.log(`✅ Teléfono aleatorio llenado: ${randomPhone}`);
     
+    // Seleccionar ubicación aleatoria en el mapa
+    try {
+      // Esperar a que el mapa se cargue completamente
+      await page.waitForTimeout(2000);
+      
+      // Buscar el contenedor del mapa
+      const mapContainer = page.locator('.leaflet-container').or(page.locator('div[class*="map"]')).or(page.locator('div[id*="map"]')).first();
+      await mapContainer.waitFor({ state: 'visible', timeout: 5000 });
+      
+      // Obtener las dimensiones del mapa
+      const box = await mapContainer.boundingBox();
+      if (box) {
+        // Generar coordenadas aleatorias dentro del área del mapa
+        // Usar un margen del 20% desde los bordes para evitar clicks en controles
+        const marginX = box.width * 0.2;
+        const marginY = box.height * 0.2;
+        const randomX = box.x + marginX + Math.random() * (box.width - 2 * marginX);
+        const randomY = box.y + marginY + Math.random() * (box.height - 2 * marginY);
+        
+        // Intentar mover el marcador si existe
+        const marker = page.locator('.leaflet-marker-icon').or(page.locator('[class*="marker"]')).first();
+        try {
+          const markerBox = await marker.boundingBox({ timeout: 3000 });
+          if (markerBox) {
+            // Arrastrar el marcador a la nueva posición aleatoria
+            await page.mouse.move(markerBox.x + markerBox.width / 2, markerBox.y + markerBox.height / 2);
+            await page.mouse.down();
+            await page.mouse.move(randomX, randomY);
+            await page.mouse.up();
+            await page.waitForTimeout(1500);
+            console.log(`✅ Marcador movido a ubicación aleatoria (${randomX.toFixed(0)}, ${randomY.toFixed(0)})`);
+          }
+        } catch (e) {
+          // Si no se encuentra el marcador, hacer click directamente en el mapa
+          await page.mouse.click(randomX, randomY);
+          await page.waitForTimeout(1500);
+          console.log(`✅ Click realizado en ubicación aleatoria del mapa (${randomX.toFixed(0)}, ${randomY.toFixed(0)})`);
+        }
+      }
+    } catch (e) {
+      console.log(`⚠️ No se pudo seleccionar ubicación aleatoria en el mapa: ${e}, continuando...`);
+    }
+    
     // Seleccionar Administrador/a usando React Select
     try {
       // Buscar el control de React Select para Administrador/a usando el label
