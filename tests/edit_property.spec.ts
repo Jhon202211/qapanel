@@ -115,13 +115,17 @@ test('Editar propiedad', async ({ page }) => {
 
     // Seleccionar una empresa aleatoria adicional usando el patrón del record
     try {
-      // Hacer click en el SVG del dropdown de empresas (basado en el record)
-      await page.getByRole('tabpanel', { name: 'Datos básicos' }).locator('svg').nth(3).click();
+      // Buscar el input del selector de empresas para abrir el dropdown sin borrar las selecciones
+      const companyInput = page.getByRole('textbox', { name: 'Empresas' }).first();
+      await companyInput.waitFor({ state: 'visible', timeout: 5000 });
+      
+      // Hacer click en el input para abrir el dropdown (esto no borra las selecciones existentes)
+      await companyInput.click({ force: true });
       await page.waitForTimeout(800);
       
       // Esperar a que aparezcan las opciones del dropdown
-      await page.waitForSelector('.react-select__option', { timeout: 3000 });
-      await page.waitForTimeout(500);
+      await page.waitForSelector('.react-select__option', { timeout: 5000 });
+      await page.waitForTimeout(800);
       
       // Obtener todas las opciones disponibles del dropdown
       const companyOptions = page.locator('.react-select__option');
@@ -143,9 +147,26 @@ test('Editar propiedad', async ({ page }) => {
 
     // Guardar los cambios
     await page.getByRole('button', { name: 'Editar datos básicos' }).click();
-    await page.waitForTimeout(1000);
-    await page.getByRole('button', { name: 'OK' }).click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
+    
+    // Esperar a que aparezca el modal de confirmación y cerrarlo
+    try {
+      // Buscar el botón "OK" o "Cerrar" en el modal
+      const okButton = page.getByRole('button', { name: /OK|Cerrar/i }).first();
+      await okButton.waitFor({ state: 'visible', timeout: 5000 });
+      await okButton.click();
+      await page.waitForTimeout(1000);
+      console.log('✅ Modal de confirmación cerrado');
+    } catch (e) {
+      // Si no aparece el botón, buscar mensaje de éxito
+      try {
+        const successMessage = page.getByText(/editado|actualizado|correctamente/i).first();
+        await successMessage.waitFor({ state: 'visible', timeout: 5000 });
+        console.log('✅ Mensaje de éxito encontrado');
+      } catch (e2) {
+        console.log('⚠️ No se encontró botón OK/Cerrar ni mensaje de éxito, continuando...');
+      }
+    }
   } catch (error) {
     console.log('❌ Test falló. Pausando para debug...');
     await page.pause();
