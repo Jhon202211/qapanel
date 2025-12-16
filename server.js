@@ -3,7 +3,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware para parsear JSON
 app.use(express.json());

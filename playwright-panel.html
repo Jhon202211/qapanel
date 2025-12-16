@@ -67,6 +67,21 @@
             font-size: 1.1em;
         }
 
+        .footer {
+            background: #ffffff;
+            color: #666666;
+            padding: 15px 25px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+            font-size: 0.9em;
+        }
+
+        .footer .version {
+            color: #999999;
+            font-size: 0.85em;
+            margin: 0;
+        }
+
         .panel {
             padding: 30px;
             background: #ffffff;
@@ -118,6 +133,12 @@
             text-decoration: none;
             background: #ffffff;
             color: #333333;
+            min-width: 0; /* Permite que el flex item se encoja */
+            overflow-wrap: break-word; /* Permite romper palabras largas */
+            word-wrap: break-word; /* Compatibilidad */
+            white-space: normal; /* Permite múltiples líneas */
+            width: 100%; /* Ocupa todo el ancho del grid */
+            box-sizing: border-box; /* Incluye padding y border en el ancho */
         }
 
         .btn:hover {
@@ -125,6 +146,18 @@
             border-color: #b0b0b0;
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn .icon {
+            flex-shrink: 0; /* El icono no se encoge */
+        }
+
+        .btn-text {
+            flex: 1; /* El texto ocupa el espacio disponible */
+            min-width: 0; /* Permite que se encoja */
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            line-height: 1.4; /* Mejor espaciado entre líneas */
         }
 
         .btn-primary {
@@ -348,7 +381,6 @@
     <div class="container">
         <div class="header">
             <h1><img src="src/queosmall.svg" alt="Queo"> Panel de Control Playwright</h1>
-            <p class="version">Versión v1.2</p>
         </div>
 
         <div class="panel">
@@ -362,8 +394,8 @@
                             <span id="browserModeText">Abrir navegador durante la ejecución</span>
                         </label>
                     </div>
-                    <button class="btn-pill btn btn-orange btn-sm" onclick="loadTestButtons()" style="padding: 5px 10px; font-size: 12px;">
-                        🔄 Recargar
+                    <button onclick="loadTestButtons()" style="padding: 4px 8px; font-size: 14px; margin-left: auto; background: transparent; border: none; cursor: pointer; color: #666666; transition: color 0.2s;" onmouseover="this.style.color='#333333'" onmouseout="this.style.color='#666666'">
+                        🔄
                     </button>
                 </div>
                 <div id="testButtonsContainer" class="button-grid">
@@ -473,6 +505,9 @@
                 <div id="output" class="output">Panel de control listo. Selecciona una acción para comenzar.</div>
                 <div id="status" class="status"></div>
             </div>
+        </div>
+        <div class="footer">
+            <p class="version">v1.2.0</p>
         </div>
     </div>
 
@@ -767,7 +802,7 @@
                         const showBrowser = document.getElementById('showBrowserToggle')?.checked ?? true;
                         const modeIcon = showBrowser ? '🖥️' : '⌨️'; // 🖥️ = navegador, ⌨️ = consola
                         
-                        button.innerHTML = `<span class="icon">${modeIcon}</span> ${displayName}`;
+                        button.innerHTML = `<span class="icon">${modeIcon}</span> <span class="btn-text">${displayName}</span>`;
                         container.appendChild(button);
                     });
                     
@@ -791,7 +826,7 @@
                                 
                                 if (originalText) {
                                     // Actualizar solo con el texto original y el nuevo icono
-                                    button.innerHTML = `<span class="icon">${modeIcon}</span> ${originalText}`;
+                                    button.innerHTML = `<span class="icon">${modeIcon}</span> <span class="btn-text">${originalText}</span>`;
                                 }
                             });
                         };
