@@ -1,0 +1,24 @@
+{
+  "build": {
+    "command": "echo 'No build required for static site'",
+    "cwd": ".",
+    "watch": []
+  },
+  "deploy": {
+    "publish": ".",
+    "exclude": [
+      "node_modules",
+      ".git",
+      "tests",
+      "test-results",
+      "playwright-report",
+      "screenshot_error_",
+      "server.js",
+      "playwright.config.ts",
+      "package-lock.json",
+      ".env",
+      ".env.*"
+    ]
+  }
+}
+
