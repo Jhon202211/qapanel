@@ -857,7 +857,8 @@
                                     // para evitar interferir con codegen que está escribiendo
                                     const response = await fetch('/api/list-tests');
                                     if (response.ok) {
-                                        const tests = await response.json();
+                                        const data = await response.json();
+                                        const { tests } = normalizeTestsResponse(data);
                                         const testExists = tests.some(t => t.name === testName);
                                         
                                         if (testExists || attempts >= maxAttempts) {
@@ -930,6 +931,21 @@
             }
         }
 
+        // Función auxiliar para normalizar la respuesta de la API
+        // Maneja tanto respuestas del servidor Express (array) como Cloudflare Workers (objeto)
+        function normalizeTestsResponse(data) {
+            // Si es un array, devolverlo directamente
+            if (Array.isArray(data)) {
+                return { tests: data, note: null };
+            }
+            // Si es un objeto con propiedad 'tests', extraerlo
+            if (data && typeof data === 'object' && Array.isArray(data.tests)) {
+                return { tests: data.tests, note: data.note || null };
+            }
+            // Si no es ninguno de los anteriores, devolver array vacío
+            return { tests: [], note: data.note || 'Formato de respuesta no reconocido' };
+        }
+
         // Cargar y generar botones de tests dinámicamente
         async function loadTestButtons() {
             const container = document.getElementById('testButtonsContainer');
@@ -940,7 +956,18 @@
             try {
                 const response = await fetch('/api/list-tests');
                 if (response.ok) {
-                    const tests = await response.json();
+                    const data = await response.json();
+                    const { tests, note } = normalizeTestsResponse(data);
+                    
+                    // Si hay una nota (limitación de Cloudflare), mostrarla
+                    if (note) {
+                        container.innerHTML = `<div style="text-align: center; padding: 20px; color: #ff9800;">
+                            <p style="margin-bottom: 10px;">⚠️ ${note}</p>
+                            <p style="font-size: 0.9em; color: #6c757d;">Esta funcionalidad requiere un servidor externo para acceder al sistema de archivos.</p>
+                        </div>`;
+                        appendOutput(`ℹ️ ${note}`);
+                        return;
+                    }
                     
                     if (tests.length === 0) {
                         container.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">No se encontraron tests</div>';
@@ -1017,10 +1044,21 @@
             try {
                 const response = await fetch('/api/list-tests');
                 if (response.ok) {
-                    const tests = await response.json();
+                    const data = await response.json();
+                    const { tests, note } = normalizeTestsResponse(data);
                     
                     // Limpiar opciones existentes (excepto la primera)
                     selector.innerHTML = '<option value="">Seleccionar test para continuar...</option>';
+                    
+                    // Si hay una nota (limitación), agregar un mensaje informativo
+                    if (note) {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = `⚠️ ${note}`;
+                        option.disabled = true;
+                        selector.appendChild(option);
+                        return;
+                    }
                     
                     // Agregar cada test como opción
                     tests.forEach(test => {
