@@ -83,8 +83,55 @@
         }
 
         .panel {
+            padding: 0;
+            background: #ffffff;
+        }
+
+        /* Estilos para pestañas */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #e0e0e0;
+            background: #ffffff;
+            padding: 0;
+            margin: 0;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 15px 20px;
+            background: #ffffff;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #666666;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tab-button:hover {
+            background: #f8f8f8;
+            color: #333333;
+        }
+
+        .tab-button.active {
+            color: #333333;
+            border-bottom-color: #ff9800;
+            background: #ffffff;
+        }
+
+        .tab-content {
+            display: none;
             padding: 30px;
             background: #ffffff;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .section {
@@ -133,12 +180,12 @@
             text-decoration: none;
             background: #ffffff;
             color: #333333;
-            min-width: 0; /* Permite que el flex item se encoja */
-            overflow-wrap: break-word; /* Permite romper palabras largas */
-            word-wrap: break-word; /* Compatibilidad */
-            white-space: normal; /* Permite múltiples líneas */
-            width: 100%; /* Ocupa todo el ancho del grid */
-            box-sizing: border-box; /* Incluye padding y border en el ancho */
+            min-width: 0;
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+            white-space: normal;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .btn:hover {
@@ -149,15 +196,15 @@
         }
 
         .btn .icon {
-            flex-shrink: 0; /* El icono no se encoge */
+            flex-shrink: 0;
         }
 
         .btn-text {
-            flex: 1; /* El texto ocupa el espacio disponible */
-            min-width: 0; /* Permite que se encoja */
+            flex: 1;
+            min-width: 0;
             overflow-wrap: break-word;
             word-wrap: break-word;
-            line-height: 1.4; /* Mejor espaciado entre líneas */
+            line-height: 1.4;
         }
 
         .btn-primary {
@@ -228,6 +275,46 @@
             border: 1px solid #333333;
         }
 
+        .output-container {
+            margin-top: 20px;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .output-header h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+
+        .output-header h3::before {
+            content: none;
+        }
+
+        .toggle-output-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+            background: #ffffff;
+            color: #333333;
+            border: 1px solid #d0d0d0;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .toggle-output-btn:hover {
+            background: #f5f5f5;
+            border-color: #b0b0b0;
+        }
+
+        .output.hidden {
+            display: none;
+        }
+
         .status {
             padding: 8px 15px;
             border-radius: 4px;
@@ -235,6 +322,10 @@
             font-weight: 500;
             text-align: center;
             margin-top: 10px;
+        }
+
+        .status.hidden {
+            display: none;
         }
 
         .status.running {
@@ -381,129 +472,193 @@
     <div class="container">
         <div class="header">
             <h1><img src="src/queosmall.svg" alt="Queo"> Panel de Control Playwright</h1>
+            <p class="version">Versión v1.3</p>
         </div>
 
         <div class="panel">
-            <!-- Sección de Pruebas -->
-            <div class="section">
-                <h3>🧪 Ejecutar Pruebas</h3>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <label id="browserModeLabel" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; color: #333333;">
-                            <input type="checkbox" id="showBrowserToggle" checked style="width: 18px; height: 18px; cursor: pointer;">
-                            <span id="browserModeText">Abrir navegador durante la ejecución</span>
-                        </label>
-                    </div>
-                    <button onclick="loadTestButtons()" style="padding: 4px 8px; font-size: 14px; margin-left: auto; background: transparent; border: none; cursor: pointer; color: #666666; transition: color 0.2s;" onmouseover="this.style.color='#333333'" onmouseout="this.style.color='#666666'">
-                        🔄
-                    </button>
-                </div>
-                <div id="testButtonsContainer" class="button-grid">
-                    <!-- Los botones se cargarán dinámicamente aquí -->
-                    <div style="text-align: center; padding: 20px; color: #6c757d;">
-                        Cargando tests...
-                    </div>
-                </div>
-                <button class="btn-pill btn btn-orange" onclick="runAllTests()" style="margin-top: 15px; width: 100%;">
-                    <span class="icon">🚀</span>
-                    Ejecutar Todas las Pruebas
+            <!-- Pestañas -->
+            <div class="tabs">
+                <button class="tab-button active" onclick="switchTab('tests', this)">
+                    🧪 Ejecutar Pruebas
+                </button>
+                <button class="tab-button" onclick="switchTab('record', this)">
+                    🎬 Record & Playback
+                </button>
+                <button class="tab-button" onclick="switchTab('utilities', this)">
+                    🛠️ Utilidades
+                </button>
+                <button class="tab-button" onclick="switchTab('editor', this)">
+                    ✏️ Editor de Tests
                 </button>
             </div>
 
-            <!-- Sección de Codegen -->
-            <div class="section">
-                <h3>🎬 Record & Playback</h3>
-                
-                <!-- Campo para nombre del test -->
-                <div style="margin-bottom: 15px;">
-                    <label for="testNameInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
-                        📝 Nombre del test (sin extensión):
-                    </label>
-                    <input 
-                        type="text" 
-                        id="testNameInput" 
-                        placeholder="ej: mi-test-grabado" 
-                        style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px;"
-                    />
-                    <small style="color: #6c757d; display: block; margin-top: 5px;">
-                        El archivo se guardará como: tests/[nombre].spec.ts
-                    </small>
-                </div>
-                
-                <div class="button-grid">
-                    <button class="btn btn-warning" onclick="startCodegen('queoaccess')">
-                        <span class="icon">🎥</span>
-                        Grabar QueoAccess
-                    </button>
-                    <button class="btn btn-warning" onclick="startCodegen('custom')">
-                        <span class="icon">🎥</span>
-                        Grabar URL Personalizada
-                    </button>
-                    <button class="btn btn-info" onclick="startCodegen('firefox')">
-                        <span class="icon">🦊</span>
-                        Grabar en Firefox
-                    </button>
-                </div>
-            </div>
-
-            <!-- Sección de Utilidades -->
-            <div class="section">
-                <h3>🛠️ Utilidades</h3>
-                <div class="button-grid">
-                    <button class="btn btn-info" onclick="showReport()">
-                        <span class="icon">📊</span>
-                        Ver Reporte HTML
-                    </button>
-                    <button class="btn btn-info" onclick="installBrowsers()">
-                        <span class="icon=">🔧</span>
-                        Instalar Navegadores
-                    </button>
-                    <button class="btn btn-info" onclick="clearOutput()">
-                        <span class="icon">🗑️</span>
-                        Limpiar Salida
-                    </button>
-                </div>
-            </div>
-
-            <!-- Sección de Editor de Tests -->
-            <div class="section">
-                <h3>✏️ Editor de Tests</h3>
-                <div class="button-grid">
-                    <button class="btn btn-warning" onclick="openTestEditor()">
-                        <span class="icon">📝</span>
-                        Editar Tests
-                    </button>
-                    <button class="btn-pill btn btn-orange" onclick="saveTestChanges()">
-                        <span class="icon">💾</span>
-                        Guardar Cambios
-                    </button>
-                    <button class="btn-pill btn btn-orange" onclick="reloadTestList()">
-                        <span class="icon">🔄</span>
-                        Recargar Tests
-                    </button>
-                </div>
-                
-                <!-- Editor de Tests -->
-                <div id="testEditor" class="test-editor" style="display: none;">
-                    <div class="editor-header">
-                        <select id="testSelector" class="test-selector">
-                            <option value="">Seleccionar test...</option>
-                        </select>
-                        <button class="btn-pill btn btn-orange btn-sm" onclick="loadTest()">Cargar</button>
+            <!-- Contenido de pestaña: Ejecutar Pruebas -->
+            <div id="tab-tests" class="tab-content active">
+                <div class="section">
+                    <h3>🧪 Ejecutar Pruebas</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <label id="browserModeLabel" style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 500; color: #333333;">
+                                <input type="checkbox" id="showBrowserToggle" checked style="width: 18px; height: 18px; cursor: pointer;">
+                                <span id="browserModeText">Abrir navegador durante la ejecución</span>
+                            </label>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label for="browserSelector" style="font-weight: 500; color: #333333; white-space: nowrap;">
+                                    Navegador:
+                                </label>
+                                <select id="browserSelector" style="padding: 8px 12px; border: 1px solid #d0d0d0; border-radius: 6px; font-size: 14px; background: white; cursor: pointer; min-width: 120px;">
+                                    <option value="chromium">Chrome</option>
+                                    <option value="msedge">Edge</option>
+                                    <option value="webkit">Safari</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button class="btn-pill btn btn-orange btn-sm" onclick="loadTestButtons()" style="padding: 5px 10px; font-size: 12px;">
+                            🔄 Recargar
+                        </button>
                     </div>
-                    <textarea id="testCode" class="test-code" placeholder="El código del test aparecerá aquí..."></textarea>
-                    <div class="editor-actions">
-                        <button class="btn-pill btn btn-orange" onclick="saveTest()">💾 Guardar</button>
-                        <button class="mx-2 btn-pill btn btn-white" onclick="closeTestEditor()">❌ Cerrar</button>
+                    <div id="testButtonsContainer" class="button-grid">
+                        <!-- Los botones se cargarán dinámicamente aquí -->
+                        <div style="text-align: center; padding: 20px; color: #6c757d;">
+                            Cargando tests...
+                        </div>
+                    </div>
+                    <button class="btn-pill btn btn-orange" onclick="runAllTests()" style="margin-top: 15px; width: 100%;">
+                        <span class="icon">🚀</span>
+                        Ejecutar Todas las Pruebas
+                    </button>
+                </div>
+
+                <!-- Salida de comandos (solo en esta pestaña) -->
+                <div class="output-container">
+                    <div class="output-header">
+                        <h3>Salida de Comandos</h3>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="toggle-output-btn" onclick="toggleOutput()" id="toggleOutputBtn">
+                                Ocultar
+                            </button>
+                            <button class="toggle-output-btn" onclick="clearOutput()">
+                                Limpiar
+                            </button>
+                        </div>
+                    </div>
+                    <div id="output" class="output">Panel de control listo. Selecciona una acción para comenzar.</div>
+                    <div id="status" class="status"></div>
+                </div>
+            </div>
+
+            <!-- Contenido de pestaña: Record & Playback -->
+            <div id="tab-record" class="tab-content">
+                <div class="section">
+                    <h3>🎬 Record & Playback</h3>
+                    
+                    <!-- Campo para nombre del test -->
+                    <div style="margin-bottom: 15px;">
+                        <label for="testNameInput" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                            📝 Nombre del test (sin extensión):
+                        </label>
+                        <input 
+                            type="text" 
+                            id="testNameInput" 
+                            placeholder="ej: mi-test-grabado" 
+                            style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px;"
+                        />
+                        <small style="color: #6c757d; display: block; margin-top: 5px;">
+                            El archivo se guardará como: tests/[nombre].spec.ts
+                        </small>
+                    </div>
+                    
+                    <div class="button-grid">
+                        <button class="btn btn-warning" onclick="startCodegen('queoaccess')">
+                            <span class="icon">🎥</span>
+                            Grabar QueoAccess
+                        </button>
+                        <button class="btn btn-warning" onclick="startCodegen('custom')">
+                            <span class="icon">🎥</span>
+                            Grabar URL Personalizada
+                        </button>
+                    </div>
+                    
+                    <!-- Continuar grabación -->
+                    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+                        <label for="continueTestSelector" style="display: block; margin-bottom: 8px; font-weight: 500; color: #2c3e50;">
+                            ▶️ Continuar grabación de test existente:
+                        </label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select 
+                                id="continueTestSelector" 
+                                class="test-selector"
+                                style="flex: 1; padding: 10px; border: 1px solid #ced4da; border-radius: 5px; font-size: 14px; background: white;"
+                            >
+                                <option value="">Seleccionar test para continuar...</option>
+                            </select>
+                            <button 
+                                class="btn-pill btn btn-orange" 
+                                onclick="continueRecording()"
+                                style="padding: 10px 20px;"
+                            >
+                                <span class="icon">▶️</span>
+                                Continuar Grabación
+                            </button>
+                        </div>
+                        <small style="color: #6c757d; display: block; margin-top: 5px;">
+                            Selecciona un test existente para continuar grabando desde donde lo dejaste
+                        </small>
                     </div>
                 </div>
             </div>
 
-            <!-- Salida de comandos -->
-            <div class="section">
-                <h3>Salida de Comandos</h3>
-                <div id="output" class="output">Panel de control listo. Selecciona una acción para comenzar.</div>
-                <div id="status" class="status"></div>
+            <!-- Contenido de pestaña: Utilidades -->
+            <div id="tab-utilities" class="tab-content">
+                <div class="section">
+                    <h3>🛠️ Utilidades</h3>
+                    <div class="button-grid">
+                        <button class="btn btn-info" onclick="showReport()">
+                            <span class="icon">📊</span>
+                            Ver Reporte HTML
+                        </button>
+                        <button class="btn btn-info" onclick="installBrowsers()">
+                            <span class="icon">🔧</span>
+                            Instalar Navegadores
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido de pestaña: Editor de Tests -->
+            <div id="tab-editor" class="tab-content">
+                <div class="section">
+                    <h3>✏️ Editor de Tests</h3>
+                    <div class="button-grid">
+                        <button class="btn btn-warning" onclick="openTestEditor()">
+                            <span class="icon">📝</span>
+                            Editar Tests
+                        </button>
+                        <button class="btn-pill btn btn-orange" onclick="saveTestChanges()">
+                            <span class="icon">💾</span>
+                            Guardar Cambios
+                        </button>
+                        <button class="btn-pill btn btn-orange" onclick="reloadTestList()">
+                            <span class="icon">🔄</span>
+                            Recargar Tests
+                        </button>
+                    </div>
+                    
+                    <!-- Editor de Tests -->
+                    <div id="testEditor" class="test-editor" style="display: none;">
+                        <div class="editor-header">
+                            <select id="testSelector" class="test-selector">
+                                <option value="">Seleccionar test...</option>
+                            </select>
+                            <button class="btn-pill btn btn-orange btn-sm" onclick="loadTest()">Cargar</button>
+                        </div>
+                        <textarea id="testCode" class="test-code" placeholder="El código del test aparecerá aquí..."></textarea>
+                        <div class="editor-actions">
+                            <button class="btn-pill btn btn-orange" onclick="saveTest()">💾 Guardar</button>
+                            <button class="mx-2 btn-pill btn btn-white" onclick="closeTestEditor()">❌ Cerrar</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         <div class="footer">
@@ -513,6 +668,45 @@
 
     <script>
         let isRunning = false;
+        let outputVisible = true;
+
+        // Función para cambiar de pestaña
+        function switchTab(tabName, buttonElement) {
+            // Ocultar todas las pestañas
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Desactivar todos los botones de pestaña
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Mostrar la pestaña seleccionada
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            
+            // Activar el botón correspondiente
+            buttonElement.classList.add('active');
+        }
+
+        // Función para ocultar/mostrar la salida
+        function toggleOutput() {
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            const toggleBtn = document.getElementById('toggleOutputBtn');
+            
+            outputVisible = !outputVisible;
+            
+            if (outputVisible) {
+                output.classList.remove('hidden');
+                status.classList.remove('hidden');
+                toggleBtn.textContent = 'Ocultar';
+            } else {
+                output.classList.add('hidden');
+                status.classList.add('hidden');
+                toggleBtn.textContent = 'Mostrar';
+            }
+        }
 
         function updateStatus(message, type = 'running') {
             const status = document.getElementById('status');
@@ -590,8 +784,7 @@
         function startCodegen(type) {
             const commands = {
                 'queoaccess': 'npx playwright codegen https://alex.queo.dev/login',
-                'custom': 'npx playwright codegen',
-                'firefox': 'npx playwright codegen -b firefox https://alex.queo.dev/login'
+                'custom': 'npx playwright codegen'
             };
             
             const command = commands[type];
@@ -696,14 +889,19 @@
                                 attempts++;
                                 try {
                                     // Verificar si el archivo existe consultando la API
+                                    // IMPORTANTE: Solo listar tests, NO leer el contenido del archivo
+                                    // para evitar interferir con codegen que está escribiendo
                                     const response = await fetch('/api/list-tests');
                                     if (response.ok) {
                                         const tests = await response.json();
                                         const testExists = tests.some(t => t.name === testName);
                                         
                                         if (testExists || attempts >= maxAttempts) {
+                                            // Solo actualizar la lista de botones, NO cargar el contenido del archivo
                                             loadTestButtons();
+                                            loadContinueTestSelector(); // Actualizar también el selector de continuar
                                             appendOutput(`🔄 Lista de tests actualizada${testExists ? ' - Nuevo test encontrado!' : ''}`);
+                                            appendOutput(`💡 Codegen sigue activo. El archivo se actualiza automáticamente mientras grabas.`);
                                         } else {
                                             // Intentar de nuevo en 1 segundo
                                             setTimeout(checkAndRefresh, 1000);
@@ -713,7 +911,10 @@
                                     console.error('Error verificando tests:', error);
                                     // Si falla, refrescar de todas formas después de 3 segundos
                                     if (attempts === 1) {
-                                        setTimeout(() => loadTestButtons(), 3000);
+                                        setTimeout(() => {
+                                            loadTestButtons();
+                                            loadContinueTestSelector();
+                                        }, 3000);
                                     }
                                 }
                             };
@@ -844,9 +1045,199 @@
             }
         }
 
+        // Cargar lista de tests en el selector de continuar grabación
+        async function loadContinueTestSelector() {
+            const selector = document.getElementById('continueTestSelector');
+            if (!selector) return;
+            
+            try {
+                const response = await fetch('/api/list-tests');
+                if (response.ok) {
+                    const tests = await response.json();
+                    
+                    // Limpiar opciones existentes (excepto la primera)
+                    selector.innerHTML = '<option value="">Seleccionar test para continuar...</option>';
+                    
+                    // Agregar cada test como opción
+                    tests.forEach(test => {
+                        const option = document.createElement('option');
+                        option.value = test.path;
+                        option.textContent = test.name;
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando lista de tests para continuar:', error);
+            }
+        }
+
+        // Función para continuar grabando un test existente
+        async function continueRecording() {
+            const selector = document.getElementById('continueTestSelector');
+            const testPath = selector?.value;
+            
+            if (!testPath) {
+                alert('⚠️ Por favor, selecciona un test para continuar grabando.');
+                return;
+            }
+            
+            try {
+                updateStatus('Leyendo test existente...', 'running');
+                appendOutput(`\n📖 Leyendo test: ${testPath}`);
+                
+                // Leer el contenido del test
+                const response = await fetch('/api/read-test', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ filePath: testPath })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Error HTTP: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                if (!result.success) {
+                    throw new Error(result.error || 'Error desconocido');
+                }
+                
+                const testContent = result.content;
+                
+                // Extraer la última URL visitada del test (buscar todas las ocurrencias de page.goto)
+                let targetUrl = 'https://alex.queo.dev'; // URL por defecto
+                let baseUrl = 'https://alex.queo.dev'; // BASE_URL por defecto
+                
+                // Primero, buscar BASE_URL en el código
+                const baseUrlMatch = testContent.match(/BASE_URL\s*=\s*process\.env\.BASE_URL\s*\|\|\s*['"`]([^'"`]+)['"`]/);
+                if (baseUrlMatch) {
+                    baseUrl = baseUrlMatch[1];
+                    appendOutput(`✅ BASE_URL detectada: ${baseUrl}`);
+                }
+                
+                // Buscar todas las ocurrencias de page.goto (incluyendo template literals)
+                const gotoRegex = /page\.goto\([`'"](\$\{BASE_URL\}[^`'"]+|[^`'"]+)['"`]\)/g;
+                const allUrls = [];
+                let match;
+                
+                while ((match = gotoRegex.exec(testContent)) !== null) {
+                    let url = match[1];
+                    // Si la URL contiene ${BASE_URL}, reemplazarla con el valor real
+                    if (url.includes('${BASE_URL}')) {
+                        url = url.replace(/\$\{BASE_URL\}/g, baseUrl);
+                    }
+                    allUrls.push(url);
+                }
+                
+                if (allUrls.length > 0) {
+                    // Usar la última URL visitada para continuar desde ahí
+                    targetUrl = allUrls[allUrls.length - 1];
+                    appendOutput(`✅ Última URL detectada: ${targetUrl}`);
+                } else {
+                    // Si no hay URLs con page.goto, buscar URLs en template literals
+                    const templateRegex = /`\$\{BASE_URL\}([^`]+)`/g;
+                    const templateUrls = [];
+                    while ((match = templateRegex.exec(testContent)) !== null) {
+                        templateUrls.push(baseUrl + match[1]);
+                    }
+                    
+                    if (templateUrls.length > 0) {
+                        targetUrl = templateUrls[templateUrls.length - 1];
+                        appendOutput(`✅ URL detectada desde template literal: ${targetUrl}`);
+                    } else {
+                        appendOutput(`⚠️ No se detectó URL específica, usando URL por defecto: ${targetUrl}`);
+                    }
+                }
+                
+                appendOutput(`📝 Continuando grabación desde: ${targetUrl}`);
+                appendOutput(`📄 Archivo original: ${testPath}`);
+                
+                // Crear un nombre de archivo temporal para trabajar
+                const pathParts = testPath.split('/');
+                const fileName = pathParts[pathParts.length - 1];
+                const tempFileName = fileName.replace('.spec.ts', '_temp_continue.spec.ts');
+                const tempOutputPath = `tests/${tempFileName}`;
+                
+                appendOutput(`📝 Archivo temporal: ${tempOutputPath}`);
+                appendOutput(`📋 Preparando código existente con inspector...`);
+                
+                // Modificar el código para agregar page.pause() al inicio del primer test
+                // Esto abrirá el inspector cuando se ejecute con --debug
+                let modifiedContent = testContent;
+                
+                // Buscar el primer test y agregar page.pause() después de la declaración async
+                // Patrón: test('nombre', async ({ page }) => { ... })
+                const testPattern = /(test\([^)]+\)\s*async\s*\(\s*\{\s*page\s*\}\s*\)\s*\{)/;
+                if (testPattern.test(modifiedContent)) {
+                    // Agregar page.pause() justo después de abrir el test
+                    modifiedContent = modifiedContent.replace(
+                        testPattern,
+                        `$1\n    // Inspector abierto para continuar grabando\n    await page.pause();`
+                    );
+                } else {
+                    // Si no encontramos el patrón estándar, agregar al inicio del archivo después de imports
+                    const importEnd = modifiedContent.lastIndexOf('import');
+                    if (importEnd !== -1) {
+                        const nextLine = modifiedContent.indexOf('\n', importEnd);
+                        if (nextLine !== -1) {
+                            modifiedContent = modifiedContent.slice(0, nextLine + 1) + 
+                                `\n// El inspector se abrirá automáticamente al ejecutar con --debug\n` +
+                                modifiedContent.slice(nextLine + 1);
+                        }
+                    }
+                }
+                
+                // Escribir el contenido modificado al archivo temporal
+                try {
+                    const writeResponse = await fetch('/api/write-test', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            filePath: tempOutputPath,
+                            content: modifiedContent
+                        })
+                    });
+                    
+                    if (!writeResponse.ok) {
+                        const writeResult = await writeResponse.json();
+                        throw new Error(writeResult.error || 'Error al escribir archivo temporal');
+                    }
+                    
+                    appendOutput(`✅ Código existente preparado con inspector`);
+                    appendOutput(`\n💡 INSTRUCCIONES:`);
+                    appendOutput(`   1. Se abrirá el inspector de Playwright con el código del test cargado`);
+                    appendOutput(`   2. El test se pausará automáticamente al inicio`);
+                    appendOutput(`   3. Verás TODO el código del test en el inspector`);
+                    appendOutput(`   4. Puedes editar el código directamente en el inspector`);
+                    appendOutput(`   5. Usa el botón "Record" para grabar nuevas acciones`);
+                    appendOutput(`   6. Continúa ejecutando paso a paso o graba nuevas acciones`);
+                    appendOutput(`   7. Al terminar, el código completo estará en: ${tempOutputPath}`);
+                    appendOutput(`   8. Copia al archivo original si es necesario y elimina el temporal`);
+                    
+                    // Usar playwright test --debug que abre el inspector con el código cargado
+                    // El page.pause() hará que se pause al inicio mostrando todo el código
+                    const command = `npx playwright test ${tempOutputPath} --debug`;
+                    
+                    runCommandReal(command, `Continuar grabación: ${testPath}`);
+                    
+                } catch (writeError) {
+                    appendOutput(`❌ Error al preparar archivo temporal: ${writeError.message}`);
+                    updateStatus(`Error al continuar grabación`, 'error');
+                }
+                
+            } catch (error) {
+                appendOutput(`❌ Error: ${error.message}`);
+                updateStatus(`Error al continuar grabación`, 'error');
+            }
+        }
+
         // Cargar tests al iniciar la página
         document.addEventListener('DOMContentLoaded', () => {
             loadTestButtons();
+            loadContinueTestSelector();
             
             // Actualizar el texto del label según el estado del checkbox
             const toggle = document.getElementById('showBrowserToggle');
@@ -870,21 +1261,36 @@
             const showBrowser = document.getElementById('showBrowserToggle').checked;
             const headedFlag = showBrowser ? '--headed' : '';
             
+            // Leer el navegador seleccionado
+            const browserSelector = document.getElementById('browserSelector');
+            const selectedBrowser = browserSelector ? browserSelector.value : 'chromium';
+            
+            // Mapear el valor del selector al nombre del proyecto en la configuración
+            const projectMap = {
+                'chromium': 'chromium',
+                'msedge': 'Microsoft Edge',
+                'webkit': 'webkit'
+            };
+            const projectName = projectMap[selectedBrowser] || 'chromium';
+            // Agregar comillas si el nombre del proyecto tiene espacios
+            const projectFlag = projectName.includes(' ') ? `--project "${projectName}"` : `--project ${projectName}`;
+            
             // Construir el comando dinámicamente basado en el nombre del test
             let testPath = `tests/${testName}.spec.ts`;
             let command;
             
             if (showBrowser) {
                 // Usar cross-env para establecer SLOW_MO=500 (ralentiza 500ms entre acciones)
-                command = `npx cross-env SLOW_MO=500 npx playwright test ${testPath} ${headedFlag}`.trim();
+                command = `npx cross-env SLOW_MO=500 npx playwright test ${testPath} ${projectFlag} ${headedFlag}`.trim();
             } else {
-                command = `npx playwright test ${testPath} ${headedFlag}`.trim();
+                command = `npx playwright test ${testPath} ${projectFlag} ${headedFlag}`.trim();
             }
             
             // DEBUG: Ver el comando que se ejecuta
             console.log('Comando ejecutado:', command);
             
-            runCommandReal(command, `Prueba ${testName}${showBrowser ? ' (con navegador)' : ' (consola)'}`);
+            const browserName = selectedBrowser === 'chromium' ? 'Chrome' : selectedBrowser === 'msedge' ? 'Edge' : 'Safari';
+            runCommandReal(command, `Prueba ${testName} (${browserName})${showBrowser ? ' (con navegador)' : ' (consola)'}`);
         };
 
         window.runAllTests = () => {
@@ -892,15 +1298,30 @@
             const showBrowser = document.getElementById('showBrowserToggle').checked;
             const headedFlag = showBrowser ? '--headed' : '';
             
+            // Leer el navegador seleccionado
+            const browserSelector = document.getElementById('browserSelector');
+            const selectedBrowser = browserSelector ? browserSelector.value : 'chromium';
+            
+            // Mapear el valor del selector al nombre del proyecto en la configuración
+            const projectMap = {
+                'chromium': 'chromium',
+                'msedge': 'Microsoft Edge',
+                'webkit': 'webkit'
+            };
+            const projectName = projectMap[selectedBrowser] || 'chromium';
+            // Agregar comillas si el nombre del proyecto tiene espacios
+            const projectFlag = projectName.includes(' ') ? `--project "${projectName}"` : `--project ${projectName}`;
+            
             let command;
             if (showBrowser) {
                 // Usar cross-env para establecer SLOW_MO=500
-                command = `npx cross-env SLOW_MO=500 npx playwright test ${headedFlag}`.trim();
+                command = `npx cross-env SLOW_MO=500 npx playwright test ${projectFlag} ${headedFlag}`.trim();
             } else {
-                command = `npx playwright test ${headedFlag}`.trim();
+                command = `npx playwright test ${projectFlag} ${headedFlag}`.trim();
             }
             
-            runCommandReal(command, `Todas las pruebas${showBrowser ? ' (con navegador)' : ' (consola)'}`);
+            const browserName = selectedBrowser === 'chromium' ? 'Chrome' : selectedBrowser === 'msedge' ? 'Edge' : 'Safari';
+            runCommandReal(command, `Todas las pruebas (${browserName})${showBrowser ? ' (con navegador)' : ' (consola)'}`);
         };
 
         window.startCodegen = (type) => {
@@ -927,8 +1348,7 @@
                 
                 const commands = {
                     'queoaccess': `npx playwright codegen https://alex.queo.dev/login --target=playwright-test --output=${outputFile}`,
-                    'custom': `npx playwright codegen --target=playwright-test --output=${outputFile}`,
-                    'firefox': `npx playwright codegen -b firefox https://alex.queo.dev/login --target=playwright-test --output=${outputFile}`
+                    'custom': `npx playwright codegen --target=playwright-test --output=${outputFile}`
                 };
                 
                 const command = commands[type];
@@ -971,6 +1391,8 @@
         };
 
         window.clearOutput = clearOutput;
+        window.continueRecording = continueRecording;
+        window.loadContinueTestSelector = loadContinueTestSelector;
     </script>
     
     <!-- Script del Editor de Tests -->
