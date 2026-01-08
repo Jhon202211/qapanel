@@ -121,19 +121,20 @@ app.post('/api/run-command', async (req, res) => {
         const { spawn } = require('child_process');
         const isWindows = process.platform === 'win32';
         
-        // Dividir el comando en partes para spawn
-        const parts = command.split(' ');
-        const mainCommand = parts[0];
-        const args = parts.slice(1);
+        // Para comandos complejos con múltiples argumentos, usar shell: true
+        // y pasar el comando completo como string en lugar de dividirlo
+        // Esto es especialmente importante para comandos con cross-env y múltiples npx
         
-        // Usar cmd en Windows para comandos que empiezan con npx
-        const commandToRun = isWindows && mainCommand === 'npx' ? 'npx.cmd' : mainCommand;
+        // Determinar el shell a usar
+        const shell = isWindows ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
+        const shellArgs = isWindows ? ['/c'] : ['-c'];
         
-        console.log(`[SERVER] Ejecutando: ${commandToRun}`, args);
+        console.log(`[SERVER] Ejecutando en shell: ${shell}`, shellArgs, command);
         
-        const childProcess = spawn(commandToRun, args, {
+        // Ejecutar el comando completo en el shell
+        const childProcess = spawn(shell, [...shellArgs, command], {
             cwd: __dirname,
-            shell: true,
+            shell: false, // Ya estamos usando shell explícitamente
             stdio: ['ignore', 'pipe', 'pipe'],
             detached: false
         });
