@@ -1353,15 +1353,43 @@
                     const result = await response.json();
                     if (result.success) {
                         appendOutput(`✅ ${result.message}`);
+                        if (result.url) {
+                            appendOutput(`🌐 URL del reporte: ${result.url}`);
+                            appendOutput(`💡 Si no se abrió automáticamente, haz clic en el enlace o cópialo en tu navegador`);
+                        }
                         updateStatus('Reporte abierto exitosamente', 'success');
                     } else {
-                        throw new Error(result.error || 'Error desconocido');
+                        const errorMsg = result.error || 'Error desconocido';
+                        appendOutput(`❌ Error: ${errorMsg}`);
+                        if (result.suggestion) {
+                            appendOutput(`💡 ${result.suggestion}`);
+                        }
+                        if (result.solution === 'kill-port') {
+                            appendOutput(`🔧 Solución: Ejecuta en la terminal: pkill -f "playwright show-report"`);
+                        }
+                        updateStatus('Error al abrir reporte', 'error');
                     }
                 } else {
-                    throw new Error(`Error HTTP: ${response.status}`);
+                    // Intentar parsear el error del servidor
+                    try {
+                        const errorData = await response.json();
+                        const errorMsg = errorData.error || `Error HTTP: ${response.status}`;
+                        appendOutput(`❌ Error: ${errorMsg}`);
+                        if (errorData.suggestion) {
+                            appendOutput(`💡 ${errorData.suggestion}`);
+                        }
+                        if (errorData.solution === 'kill-port') {
+                            appendOutput(`🔧 Solución: Ejecuta en la terminal: pkill -f "playwright show-report"`);
+                        }
+                    } catch (parseError) {
+                        appendOutput(`❌ Error HTTP: ${response.status}`);
+                        appendOutput(`💡 Verifica que haya tests ejecutados previamente para generar un reporte`);
+                    }
+                    updateStatus('Error al abrir reporte', 'error');
                 }
             } catch (error) {
                 appendOutput(`❌ Error: ${error.message}`);
+                appendOutput(`💡 Verifica que el servidor esté ejecutándose y que haya tests ejecutados previamente`);
                 updateStatus('Error al abrir reporte', 'error');
             } finally {
                 setRunning(false);
