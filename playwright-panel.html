@@ -847,15 +847,28 @@
                     console.log('Resultado parseado:', result);
                     
                     if (result.success) {
-                        appendOutput(`✅ ${result.stdout || 'Comando ejecutado exitosamente'}`);
+                        // Mostrar stdout completo
+                        if (result.stdout) {
+                            appendOutput(result.stdout);
+                        }
+                        
+                        // Mostrar stderr si existe (puede contener información importante)
                         if (result.stderr) {
-                            appendOutput(`⚠️ ${result.stderr}`);
+                            appendOutput(`\n⚠️ Errores/Warnings:\n${result.stderr}`);
                         }
                         
                         // Si el test falló, mostrar mensaje apropiado
                         if (result.testFailed) {
                             console.log('Test falló, actualizando estado a error');
                             updateStatus(`${description} completado con errores en el test`, 'error');
+                            
+                            // Verificar si es un error específico de Safari/WebKit
+                            const output = (result.stdout || '') + (result.stderr || '');
+                            if (output.includes('webkit') || output.includes('Safari') || output.includes('WebKit')) {
+                                if (output.includes('Failed to launch') || output.includes('Browser closed') || output.includes('connection')) {
+                                    appendOutput(`\n💡 Sugerencia: Verifica que WebKit esté instalado ejecutando: npx playwright install webkit`);
+                                }
+                            }
                         } else {
                             console.log('Test pasó, actualizando estado a success');
                             updateStatus(`${description} completado exitosamente`, 'success');
@@ -944,6 +957,11 @@
                 if (error.name === 'AbortError') {
                     appendOutput(`❌ Error: El comando tardó demasiado tiempo (timeout de 10 minutos)`);
                     updateStatus(`Timeout en ${description}`, 'error');
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    appendOutput(`❌ Error de conexión: No se pudo conectar al servidor`);
+                    appendOutput(`💡 Verifica que el servidor esté ejecutándose en http://localhost:3000`);
+                    appendOutput(`💡 Si el problema persiste, verifica la consola del servidor para más detalles`);
+                    updateStatus(`Error de conexión en ${description}`, 'error');
                 } else {
                     appendOutput(`❌ Error: ${error.message}`);
                     updateStatus(`Error en ${description}`, 'error');
@@ -1371,15 +1389,43 @@
                     const result = await response.json();
                     if (result.success) {
                         appendOutput(`✅ ${result.message}`);
+                        if (result.url) {
+                            appendOutput(`🌐 URL del reporte: ${result.url}`);
+                            appendOutput(`💡 Si no se abrió automáticamente, haz clic en el enlace o cópialo en tu navegador`);
+                        }
                         updateStatus('Reporte abierto exitosamente', 'success');
                     } else {
-                        throw new Error(result.error || 'Error desconocido');
+                        const errorMsg = result.error || 'Error desconocido';
+                        appendOutput(`❌ Error: ${errorMsg}`);
+                        if (result.suggestion) {
+                            appendOutput(`💡 ${result.suggestion}`);
+                        }
+                        if (result.solution === 'kill-port') {
+                            appendOutput(`🔧 Solución: Ejecuta en la terminal: pkill -f "playwright show-report"`);
+                        }
+                        updateStatus('Error al abrir reporte', 'error');
                     }
                 } else {
-                    throw new Error(`Error HTTP: ${response.status}`);
+                    // Intentar parsear el error del servidor
+                    try {
+                        const errorData = await response.json();
+                        const errorMsg = errorData.error || `Error HTTP: ${response.status}`;
+                        appendOutput(`❌ Error: ${errorMsg}`);
+                        if (errorData.suggestion) {
+                            appendOutput(`💡 ${errorData.suggestion}`);
+                        }
+                        if (errorData.solution === 'kill-port') {
+                            appendOutput(`🔧 Solución: Ejecuta en la terminal: pkill -f "playwright show-report"`);
+                        }
+                    } catch (parseError) {
+                        appendOutput(`❌ Error HTTP: ${response.status}`);
+                        appendOutput(`💡 Verifica que haya tests ejecutados previamente para generar un reporte`);
+                    }
+                    updateStatus('Error al abrir reporte', 'error');
                 }
             } catch (error) {
                 appendOutput(`❌ Error: ${error.message}`);
+                appendOutput(`💡 Verifica que el servidor esté ejecutándose y que haya tests ejecutados previamente`);
                 updateStatus('Error al abrir reporte', 'error');
             } finally {
                 setRunning(false);
