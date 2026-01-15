@@ -19,6 +19,16 @@ test('test', async ({ page }) => {
   await page.getByRole('link', { name: 'Historial de accesos' }).click();
   // Esperar a que cargue la página de Historial de accesos
   await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="filterBtn"]', { timeout: 10000 });
+  await page.getByTestId('filterBtn').click();
+  // Esperar a que cargue el calendario después de hacer clic en el botón de filtros
+  await expect(page.getByRole('textbox', { name: 'Filtrar por fecha' })).toBeVisible({ timeout: 10000 });
+  await page.getByRole('textbox', { name: 'Filtrar por fecha' }).click();
+  await page.getByRole('option', { name: 'Choose jueves, 1 de enero de' }).click();
+  await page.getByRole('option', { name: 'Choose miércoles, 14 de enero de' }).click();
+  await page.getByRole('button', { name: 'Aplicar filtros' }).click();
+  // Esperar a que cargue la página con los resultados filtrados
+  await page.waitForLoadState('networkidle');
   await page.getByRole('cell', { name: '-' }).nth(1).click({
     button: 'middle'
   });
