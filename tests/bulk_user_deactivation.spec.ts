@@ -4,7 +4,7 @@ import * as path from 'path';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const BASE_URL = process.env.BASE_URL || 'https://yanine.queo.dev';
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 
 test('test', async ({ page }) => {
   await page.setViewportSize({ width: 1920, height: 1080 });

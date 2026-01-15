@@ -5,7 +5,7 @@ import { generateExcelFile } from './helpers/generateExcelFile';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const BASE_URL = process.env.BASE_URL || 'https://yanine.queo.dev';
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 const RECORDS_COUNT = 25; // Cantidad de registros a generar por ejecución
 
 test('test', async ({ page }) => {

@@ -1,9 +1,17 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Cargar variables de entorno
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
+const MAILHOG_URL = process.env.MAILHOG_URL || 'https://qa.mailhog.queo.dev';
 
 test('test', async ({ page, context }) => {
   // Aumentar el timeout del test a 60 segundos para dar tiempo a MailHog
   test.setTimeout(60000);
-  await page.goto('https://yanine.queo.dev/login');
+  await page.goto(`${BASE_URL}/login`);
   await page.getByRole('textbox', { name: 'Correo electrónico' }).click();
   await page.getByRole('textbox', { name: 'Correo electrónico' }).fill('userrfid2109@refactor.com');
   await page.getByRole('textbox', { name: '*********' }).click();
@@ -42,7 +50,7 @@ test('test', async ({ page, context }) => {
   // Abrir MailHog en una nueva página para validar el correo de confirmación
   const mailhogPage = await context.newPage();
   // Navegar a MailHog con timeout extendido y esperar solo a que el DOM esté listo (más rápido)
-  await mailhogPage.goto('https://qa.mailhog.queo.dev/', { 
+  await mailhogPage.goto(`${MAILHOG_URL}/`, { 
     waitUntil: 'domcontentloaded', 
     timeout: 60000 
   });

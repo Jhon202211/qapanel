@@ -1,7 +1,14 @@
 import { test, expect } from '@playwright/test';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
+
+// Cargar variables de entorno
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 
 test('test', async ({ page }) => {
-  await page.goto('https://yanine.queo.dev/login');
+  await page.goto(`${BASE_URL}/login`);
   await page.getByRole('textbox', { name: 'Correo electrónico' }).click();
   await page.getByRole('textbox', { name: 'Correo electrónico' }).fill('userrfid2109@refactor.com');
   await page.getByRole('textbox', { name: 'Contraseña' }).click();

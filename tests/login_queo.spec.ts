@@ -5,7 +5,7 @@ import * as path from 'path';
 // Cargar variables de entorno
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-const BASE_URL = process.env.BASE_URL || 'https://yanine.queo.dev';
+const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 
 test('test', async ({ page }) => {
   // Maximizar la ventana del navegador a pantalla completa
