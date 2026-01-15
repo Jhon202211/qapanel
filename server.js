@@ -3,7 +3,7 @@ const { exec } = require('child_process');
 const path = require('path');
 const fs = require('fs').promises;
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3001;
 
 // Middleware para parsear JSON
 app.use(express.json());
@@ -121,19 +121,20 @@ app.post('/api/run-command', async (req, res) => {
         const { spawn } = require('child_process');
         const isWindows = process.platform === 'win32';
         
-        // Dividir el comando en partes para spawn
-        const parts = command.split(' ');
-        const mainCommand = parts[0];
-        const args = parts.slice(1);
+        // Para comandos complejos con múltiples argumentos, usar shell: true
+        // y pasar el comando completo como string en lugar de dividirlo
+        // Esto es especialmente importante para comandos con cross-env y múltiples npx
         
-        // Usar cmd en Windows para comandos que empiezan con npx
-        const commandToRun = isWindows && mainCommand === 'npx' ? 'npx.cmd' : mainCommand;
+        // Determinar el shell a usar
+        const shell = isWindows ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
+        const shellArgs = isWindows ? ['/c'] : ['-c'];
         
-        console.log(`[SERVER] Ejecutando: ${commandToRun}`, args);
+        console.log(`[SERVER] Ejecutando en shell: ${shell}`, shellArgs, command);
         
-        const childProcess = spawn(commandToRun, args, {
+        // Ejecutar el comando completo en el shell
+        const childProcess = spawn(shell, [...shellArgs, command], {
             cwd: __dirname,
-            shell: true,
+            shell: false, // Ya estamos usando shell explícitamente
             stdio: ['ignore', 'pipe', 'pipe'],
             detached: false
         });
@@ -276,11 +277,15 @@ app.get('/api/status', (req, res) => {
 
 // Ruta para abrir reporte HTML
 app.get('/api/open-report', (req, res) => {
-    // Primero verificar si hay un proceso usando el puerto 9323
+    // Verificar si hay un proceso usando el puerto 9323
     exec('lsof -i :9323', { cwd: __dirname }, (portError, portOutput) => {
         if (portOutput && portOutput.trim()) {
             // Puerto ocupado, intentar liberarlo
+            console.log('[REPORT] Puerto 9323 ocupado, intentando liberarlo...');
             exec('pkill -f "playwright show-report"', { cwd: __dirname }, (killError) => {
+                if (killError) {
+                    console.error('[REPORT] Error al matar proceso:', killError);
+                }
                 // Esperar un momento y luego intentar abrir el reporte
                 setTimeout(() => {
                     openReport(res);
@@ -381,34 +386,136 @@ app.post('/api/write-test', async (req, res) => {
 });
 
 function openReport(res) {
-    exec('npx playwright show-report', { cwd: __dirname }, (error, stdout, stderr) => {
-        if (error) {
-            console.error(`Error abriendo reporte: ${error}`);
-            
-            // Si es error de puerto ocupado, dar instrucciones específicas
-            if (error.message.includes('EADDRINUSE')) {
-                res.status(500).json({ 
+    const { spawn } = require('child_process');
+    const isWindows = process.platform === 'win32';
+    
+    // Determinar el shell a usar
+    const shell = isWindows ? process.env.COMSPEC || 'cmd.exe' : '/bin/sh';
+    const shellArgs = isWindows ? ['/c'] : ['-c'];
+    const command = 'npx playwright show-report';
+    
+    console.log(`[REPORT] Iniciando: ${command}`);
+    
+    let responseSent = false;
+    
+    const sendResponse = (success, data) => {
+        if (responseSent) {
+            console.log(`[REPORT] Respuesta ya enviada, ignorando`);
+            return;
+        }
+        responseSent = true;
+        
+        if (success) {
+            res.json(data);
+        } else {
+            res.status(500).json(data);
+        }
+    };
+    
+    // Ejecutar el comando en background (detached) para que no bloquee
+    const reportProcess = spawn(shell, [...shellArgs, command], {
+        cwd: __dirname,
+        shell: false,
+        stdio: ['ignore', 'pipe', 'pipe'], // Capturar stderr para detectar errores
+        detached: true // Desvincular del proceso padre
+    });
+    
+    // Almacenar referencia del proceso para poder cerrarlo después si es necesario
+    if (!global.reportProcesses) {
+        global.reportProcesses = new Set();
+    }
+    global.reportProcesses.add(reportProcess);
+    
+    let stderrOutput = '';
+    
+    // Capturar errores de stderr
+    reportProcess.stderr.on('data', (data) => {
+        const output = data.toString();
+        stderrOutput += output;
+        console.log(`[REPORT] stderr:`, output.substring(0, 200));
+        
+        // Si hay un error claro en stderr, responder con error
+        if (output.includes('No report found') || output.includes('ENOENT') || output.includes('not found')) {
+            if (!responseSent) {
+                sendResponse(false, {
+                    success: false,
+                    error: 'No se encontró ningún reporte. Ejecuta algunos tests primero para generar un reporte.',
+                    suggestion: 'Ejecuta al menos un test antes de intentar ver el reporte'
+                });
+            }
+        }
+    });
+    
+    // Limpiar la referencia cuando el proceso termine
+    reportProcess.on('close', (code) => {
+        console.log(`[REPORT] Proceso terminado con código: ${code}`);
+        if (global.reportProcesses) {
+            global.reportProcesses.delete(reportProcess);
+        }
+        
+        // Si el proceso terminó con error y aún no se envió respuesta
+        if (code !== 0 && !responseSent) {
+            sendResponse(false, {
+                success: false,
+                error: `El proceso terminó con código de error: ${code}`,
+                stderr: stderrOutput,
+                suggestion: 'Verifica que Playwright esté instalado correctamente y que haya tests ejecutados previamente'
+            });
+        }
+    });
+    
+    // Manejar errores de inicio (no se pudo iniciar el proceso)
+    reportProcess.on('error', (error) => {
+        console.error(`[REPORT] Error iniciando proceso:`, error);
+        
+        if (global.reportProcesses) {
+            global.reportProcesses.delete(reportProcess);
+        }
+        
+        if (!responseSent) {
+            // Si el error es de puerto ocupado, dar instrucciones específicas
+            if (error.message && error.message.includes('EADDRINUSE')) {
+                sendResponse(false, {
+                    success: false,
                     error: 'Puerto 9323 ocupado. Ejecuta: pkill -f "playwright show-report"',
-                    stderr: stderr,
                     solution: 'kill-port'
                 });
             } else {
-                res.status(500).json({ 
-                    error: error.message, 
-                    stderr: stderr
+                sendResponse(false, {
+                    success: false,
+                    error: error.message || 'Error al iniciar el servidor del reporte',
+                    suggestion: 'Verifica que Playwright esté instalado correctamente y que haya tests ejecutados previamente'
                 });
             }
-            return;
         }
-
-        console.log(`Reporte abierto exitosamente`);
-        res.json({ 
-            success: true, 
-            message: 'Reporte HTML abierto en el navegador',
-            stdout: stdout,
-            stderr: stderr
-        });
     });
+    
+    // Esperar un momento para verificar si el proceso se inició correctamente
+    setTimeout(() => {
+        if (!responseSent) {
+            // Verificar si el proceso sigue ejecutándose
+            if (!reportProcess.killed && reportProcess.pid) {
+                console.log(`[REPORT] Proceso iniciado con PID: ${reportProcess.pid}`);
+                sendResponse(true, {
+                    success: true, 
+                    message: 'Reporte HTML abierto en el navegador. Si no se abrió automáticamente, visita http://localhost:9323',
+                    processId: reportProcess.pid,
+                    url: 'http://localhost:9323'
+                });
+            } else if (!responseSent) {
+                // Si el proceso ya terminó o no se inició, esperar un poco más
+                setTimeout(() => {
+                    if (!responseSent && reportProcess.killed) {
+                        sendResponse(false, {
+                            success: false,
+                            error: 'El proceso del reporte no se pudo iniciar correctamente',
+                            suggestion: 'Verifica que Playwright esté instalado correctamente y que haya tests ejecutados previamente'
+                        });
+                    }
+                }, 1000);
+            }
+        }
+    }, 2000); // Esperar 2 segundos para que el proceso inicie
 }
 
 // Iniciar servidor

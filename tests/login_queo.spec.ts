@@ -21,7 +21,11 @@ test('test', async ({ page }) => {
     // Ignorar si no se puede maximizar
   }
 
-  await page.goto(`${BASE_URL}/login`);
+  // Aumentar timeout a 60 segundos para esta navegación
+  await page.goto(`${BASE_URL}/login`, { 
+    waitUntil: 'domcontentloaded', // Espera solo a que el DOM esté listo
+    timeout: 60000 
+  });
   await page.getByRole('textbox', { name: 'Correo electrónico' }).click();
   await page.getByRole('textbox', { name: 'Correo electrónico' }).click();
   await page.getByRole('textbox', { name: 'Correo electrónico' }).fill('userrfid2109@refactor.com');

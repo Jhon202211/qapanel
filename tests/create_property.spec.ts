@@ -9,6 +9,7 @@ const USER_EMAIL = process.env.USER_EMAIL || '';
 const USER_PASSWORD = process.env.USER_PASSWORD || '';
 const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 const EXECUTION_TYPE = process.env.EXECUTION_TYPE || 'plan';
+const PROPERTY_ADMIN = process.env.PROPERTY_ADMIN || '';
 
 // Clase PropertyPage para encapsular la lógica de interacción con la página de propiedades
 class PropertyPage {
@@ -142,16 +143,32 @@ class PropertyPage {
     
     // Seleccionar Administrador/a usando React Select
     try {
+      if (!PROPERTY_ADMIN) {
+        throw new Error('PROPERTY_ADMIN no está definido en las variables de entorno');
+      }
+      
       await this.page.locator('.react-select__value-container').first().click();
       await this.page.waitForTimeout(500);
       
-      await this.page.getByRole('textbox', { name: 'Administrador/a' }).fill('qa');
+      // Extraer el nombre del email (parte antes del @) para la búsqueda
+      const adminSearch = PROPERTY_ADMIN.split('@')[0] || PROPERTY_ADMIN;
+      const textbox = this.page.getByRole('textbox', { name: 'Administrador/a' });
+      await textbox.fill(adminSearch);
       await this.page.waitForTimeout(1000);
       
-      await this.page.getByLabel('Datos básicos').getByText('Automatic QA').click();
+      // Usar Enter para seleccionar la opción en lugar de click (más confiable con React Select)
+      // Primero esperar a que aparezca la opción en el menú
+      const option = this.page.getByText(PROPERTY_ADMIN, { exact: false }).or(
+        this.page.getByText(adminSearch, { exact: false })
+      ).first();
+      await option.waitFor({ state: 'visible', timeout: 3000 });
+      
+      // Usar Enter para seleccionar la opción
+      await textbox.press('Enter');
       await this.page.waitForTimeout(1000);
+      console.log(`✅ Administrador seleccionado: ${PROPERTY_ADMIN}`);
     } catch (e) {
-      console.log('⚠️ No se pudo seleccionar administrador, continuando...');
+      console.log(`⚠️ No se pudo seleccionar administrador: ${e}, continuando...`);
     }
     
     // Seleccionar Empresas usando React Select
