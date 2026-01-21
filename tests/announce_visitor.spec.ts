@@ -11,6 +11,20 @@ const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
 const EXECUTION_TYPE = process.env.EXECUTION_TYPE || 'plan';
 const VISITOR_DNI = process.env.VISITOR_DNI || '10234284';
 
+// Función auxiliar para formatear fechas en español según el formato del calendario
+function formatDateForCalendar(date: Date): string {
+  const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  
+  const dayName = days[date.getDay()];
+  const day = date.getDate();
+  const month = months[date.getMonth()];
+  
+  // El formato del calendario parece ser "Choose [día], [número] de [mes] de" (sin año)
+  return `Choose ${dayName}, ${day} de ${month} de`;
+}
+
 // Clase VisitorAnnouncePage para encapsular la lógica de solicitud de autorización de visitantes
 class VisitorAnnouncePage {
   private page: Page;
@@ -128,18 +142,31 @@ class VisitorAnnouncePage {
     await this.page.waitForTimeout(1000);
     
     console.log('📅 Configurando fechas y horarios...');
+    // Calcular fechas dinámicamente basadas en la fecha actual
+    const today = new Date();
+    const endDate = new Date(today);
+    endDate.setDate(today.getDate() + 2); // 2 días después de hoy (3 días en total)
+    
+    const startDateText = formatDateForCalendar(today);
+    const endDateText = formatDateForCalendar(endDate);
+    
+    console.log(`📅 Fecha inicio: ${startDateText}`);
+    console.log(`📅 Fecha fin: ${endDateText}`);
+    
     // Configurar fechas
     const dateField = this.page.getByRole('textbox', { name: 'Fechas de la visita' });
     await dateField.waitFor({ state: 'visible', timeout: this.timeout });
     await dateField.click();
     await this.page.waitForTimeout(1000);
     
-    await this.page.getByRole('option', { name: 'Choose miércoles, 7 de enero de' }).waitFor({ state: 'visible', timeout: this.timeout });
-    await this.page.getByRole('option', { name: 'Choose miércoles, 7 de enero de' }).click();
+    // Seleccionar fecha de inicio (hoy)
+    await this.page.getByRole('option', { name: startDateText }).waitFor({ state: 'visible', timeout: this.timeout });
+    await this.page.getByRole('option', { name: startDateText }).click();
     await this.page.waitForTimeout(1000);
     
-    await this.page.getByRole('option', { name: 'Choose viernes, 9 de enero de' }).waitFor({ state: 'visible', timeout: this.timeout });
-    await this.page.getByRole('option', { name: 'Choose viernes, 9 de enero de' }).click();
+    // Seleccionar fecha final (hoy + 2 días)
+    await this.page.getByRole('option', { name: endDateText }).waitFor({ state: 'visible', timeout: this.timeout });
+    await this.page.getByRole('option', { name: endDateText }).click();
     await this.page.waitForTimeout(1000);
     
     // Configurar horarios
