@@ -160,13 +160,17 @@ class VisitorAnnouncePage {
     await this.page.waitForTimeout(1000);
     
     // Seleccionar fecha de inicio (hoy)
-    await this.page.getByRole('option', { name: startDateText }).waitFor({ state: 'visible', timeout: this.timeout });
-    await this.page.getByRole('option', { name: startDateText }).click();
+    // Usar un selector que excluya días fuera del mes actual
+    const startDateOption = this.page.locator(`[role="option"][aria-label*="${startDateText}"]:not(.react-datepicker__day--outside-month)`).first();
+    await startDateOption.waitFor({ state: 'visible', timeout: this.timeout });
+    await startDateOption.click();
     await this.page.waitForTimeout(1000);
     
     // Seleccionar fecha final (hoy + 2 días)
-    await this.page.getByRole('option', { name: endDateText }).waitFor({ state: 'visible', timeout: this.timeout });
-    await this.page.getByRole('option', { name: endDateText }).click();
+    // Usar un selector que excluya días fuera del mes actual
+    const endDateOption = this.page.locator(`[role="option"][aria-label*="${endDateText}"]:not(.react-datepicker__day--outside-month)`).first();
+    await endDateOption.waitFor({ state: 'visible', timeout: this.timeout });
+    await endDateOption.click();
     await this.page.waitForTimeout(1000);
     
     // Configurar horarios
