@@ -6,11 +6,15 @@ import * as path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const BASE_URL = process.env.BASE_URL || 'https://alex.queo.dev';
+const USER_EMAIL = process.env.USER_EMAIL || '';
+const USER_PASSWORD = process.env.USER_PASSWORD || '';
+const USER_TO_EDIT = process.env.USER_TO_EDIT || '';
 
 // slowMo se configura automáticamente desde playwright.config.ts
 // cuando se ejecuta con la variable de entorno SLOW_MO
 
 test('Editar usuario', async ({ page }) => {
+  test.skip(!USER_TO_EDIT, 'Define USER_TO_EDIT en .env con el correo del usuario a editar');
   try {
     // Maximizar la ventana del navegador a pantalla completa
     await page.setViewportSize({ width: 1920, height: 1080 });
@@ -34,8 +38,8 @@ test('Editar usuario', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Iniciar sesión' })).toBeVisible();
     
     // Login
-    await page.getByRole('textbox', { name: 'Correo electrónico' }).fill('usuarior15@simultaneo.com');
-    await page.getByRole('textbox', { name: 'Contraseña' }).fill('usuarior15');
+    await page.getByRole('textbox', { name: 'Correo electrónico' }).fill(USER_EMAIL);
+    await page.getByRole('textbox', { name: 'Contraseña' }).fill(USER_PASSWORD);
     await page.getByRole('button', { name: 'Iniciar sesión' }).click();
     
     // ========== VISTA 2: DASHBOARD ==========
@@ -96,10 +100,10 @@ test('Editar usuario', async ({ page }) => {
       // Validar que la vista de usuarios cargó
       await expect(page.getByRole('textbox', { name: /Buscar/i })).toBeVisible();
       
-      // Filtrar el usuario por correo
+      // Filtrar el usuario por correo (usar USER_TO_EDIT del .env)
       const searchInput = page.getByRole('textbox', { name: /Buscar/i });
       await searchInput.click();
-      await searchInput.fill('usuario12@setfacial.com');
+      await searchInput.fill(USER_TO_EDIT);
       
       // Esperar a que se filtre la lista (dar tiempo para que aparezca el usuario)
       await page.waitForTimeout(1000);
