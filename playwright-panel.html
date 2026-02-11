@@ -517,6 +517,12 @@
                             🔄 Recargar
                         </button>
                     </div>
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" id="testSearchInput" placeholder="🔍 Buscar tests por nombre..." 
+                            style="width: 100%; padding: 10px 14px; border: 1px solid #d0d0d0; border-radius: 8px; font-size: 14px; box-sizing: border-box;"
+                            oninput="filterTestButtons()">
+                        <small id="testSearchCount" style="display: block; margin-top: 6px; color: #6c757d; font-size: 12px;"></small>
+                    </div>
                     <div id="testButtonsContainer" class="button-grid">
                         <!-- Los botones se cargarán dinámicamente aquí -->
                         <div style="text-align: center; padding: 20px; color: #6c757d;">
@@ -1040,6 +1046,8 @@
                         
                         // Guardar el texto original en un atributo data para poder recuperarlo después
                         button.setAttribute('data-test-name', displayName);
+                        // Texto normalizado para búsqueda (nombre original + display)
+                        button.setAttribute('data-search', (test.name + ' ' + displayName).toLowerCase());
                         
                         // Agregar indicador del modo actual
                         const showBrowser = document.getElementById('showBrowserToggle')?.checked ?? true;
@@ -1084,6 +1092,31 @@
             } catch (error) {
                 container.innerHTML = `<div style="text-align: center; padding: 20px; color: #f5576c;">❌ Error cargando tests: ${error.message}</div>`;
                 appendOutput(`❌ Error cargando lista de tests: ${error.message}`);
+            }
+            // Reaplicar filtro por si había texto en el buscador
+            filterTestButtons();
+        }
+
+        // Filtrar botones de tests según el texto del buscador
+        function filterTestButtons() {
+            const searchInput = document.getElementById('testSearchInput');
+            const container = document.getElementById('testButtonsContainer');
+            const countEl = document.getElementById('testSearchCount');
+            if (!searchInput || !container || !countEl) return;
+
+            const query = (searchInput.value || '').trim().toLowerCase();
+            const buttons = container.querySelectorAll('button[data-search]');
+            let visible = 0;
+            buttons.forEach(button => {
+                const searchText = button.getAttribute('data-search') || '';
+                const show = !query || searchText.includes(query);
+                button.style.display = show ? '' : 'none';
+                if (show) visible++;
+            });
+            if (buttons.length > 0) {
+                countEl.textContent = query ? `Mostrando ${visible} de ${buttons.length} tests` : `${buttons.length} tests`;
+            } else {
+                countEl.textContent = '';
             }
         }
 
