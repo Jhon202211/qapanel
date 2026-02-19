@@ -1016,11 +1016,12 @@
                     const data = await response.json();
                     const { tests, note } = normalizeTestsResponse(data);
                     
-                    // Si hay una nota (limitación de Cloudflare), mostrarla
+                    // Si hay una nota (limitación de Cloudflare o error de conexión al runner), mostrarla
                     if (note) {
+                        const errorDetail = data.error ? ` <span style="font-size: 0.85em; color: #6c757d;">(${data.error})</span>` : '';
                         container.innerHTML = `<div style="text-align: center; padding: 20px; color: #ff9800;">
-                            <p style="margin-bottom: 10px;">⚠️ ${note}</p>
-                            <p style="font-size: 0.9em; color: #6c757d;">Esta funcionalidad requiere un servidor externo para acceder al sistema de archivos.</p>
+                            <p style="margin-bottom: 10px;">⚠️ ${note}${errorDetail}</p>
+                            <p style="font-size: 0.9em; color: #6c757d;">Esta funcionalidad requiere un servidor externo (runner) activo. Si usas Railway, abre la URL del runner en el navegador para despertarlo.</p>
                         </div>`;
                         appendOutput(`ℹ️ ${note}`);
                         return;

@@ -58,8 +58,14 @@ export async function onRequest(context: {
       });
     }
     try {
-      const res = await fetch(`${runnerBase}/tests`);
-      if (!res.ok) throw new Error(`Runner: ${res.status}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const res = await fetch(`${runnerBase}/tests`, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'PlaywrightPanel-Cloudflare/1.0' },
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) throw new Error(`Runner respondió con ${res.status}`);
       const files: string[] = await res.json();
       const tests = files.map((f) => ({
         name: f.replace(/\.spec\.(ts|js)$/, ''),
@@ -67,11 +73,16 @@ export async function onRequest(context: {
       }));
       return jsonResponse({ tests });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isTimeout = msg.includes('abort') || msg.includes('timeout');
+      const note = isTimeout
+        ? `El runner (${runnerBase}) no respondió a tiempo. Si usas Railway en plan gratuito, el servicio puede estar dormido: abre la URL en el navegador para despertarlo y vuelve a intentar.`
+        : `No se pudo conectar al runner (${runnerBase}). ${msg} Comprueba que RUNNER_URL sea correcta y que el servicio esté activo.`;
       return jsonResponse(
         {
           tests: [],
-          note: `No se pudo conectar al runner (${runnerBase}). Comprueba RUNNER_URL y que el servicio esté activo.`,
-          error: err instanceof Error ? err.message : String(err),
+          note,
+          error: msg,
         },
         200
       );
@@ -105,11 +116,15 @@ export async function onRequest(context: {
           400
         );
       }
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 300000);
       const runRes = await fetch(`${runnerBase}/run`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'User-Agent': 'PlaywrightPanel-Cloudflare/1.0' },
         body: JSON.stringify({ test: testFile }),
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       const result = await runRes.json();
       // El panel espera { success, stdout, stderr, testFailed? }
       return jsonResponse({
