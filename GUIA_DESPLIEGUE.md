@@ -49,6 +49,8 @@ Si necesitas variables de entorno:
 2. Agrega las variables necesarias:
    - `NODE_ENV` = `production`
    - `BASE_URL` = `https://alex.queo.dev` (o tu URL)
+   - **`RUNNER_URL`** = URL de tu runner en Railway (ej. `https://playwright-runner-production-8434.up.railway.app`)  
+     → **Necesaria para que el panel en Cloudflare ejecute y liste tests** usando el backend desplegado en Railway. Sin esta variable, el panel mostrará el mensaje de "servicio externo requerido".
    - Cualquier otra variable que uses en tu código
 
 ### Paso 5: Desplegar
@@ -117,24 +119,35 @@ Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), desp
 
 ## 🔗 Configuración Híbrida (Recomendada para Producción)
 
+### Conectar el panel (Cloudflare) con el runner (Railway)
+
+1. Despliega el **playwright-runner** en Railway y anota la URL (ej. `https://playwright-runner-production-8434.up.railway.app`).
+2. En tu proyecto en **Cloudflare Pages**:
+   - Ve a **Settings** → **Environment variables**.
+   - Añade una variable:
+     - **Variable name:** `RUNNER_URL`
+     - **Value:** `https://tu-app.up.railway.app` (tu URL de Railway, **sin** barra final).
+   - Guarda y haz un **nuevo despliegue** (Redeploy) para que la variable se aplique.
+3. El panel seguirá llamando a `/api/list-tests` y `/api/run-command`; la función en `functions/api/` hará de proxy al runner usando `RUNNER_URL`.
+
 ### Arquitectura:
 
 ```
 ┌─────────────────────────┐
 │  Cloudflare Pages       │
 │  (Panel HTML estático)  │
-│  playwright-panel.html  │
+│  playwright-panel.html   │
+│  + functions/api (proxy)│
 └───────────┬─────────────┘
             │
-            │ API calls
+            │ RUNNER_URL
             │
 ┌───────────▼─────────────┐
-│  Railway/Render         │
-│  (Servidor Express)     │
-│  server.js              │
+│  Railway (playwright-   │
+│  runner)                │
+│  GET /tests, POST /run  │
+│  - Listar tests         │
 │  - Ejecutar tests       │
-│  - Codegen              │
-│  - APIs completas       │
 └─────────────────────────┘
 ```
 
