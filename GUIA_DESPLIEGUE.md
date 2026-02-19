@@ -132,9 +132,11 @@ Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), desp
 
 **Si el panel sigue diciendo "No se pudo conectar al runner"** aunque el runner responda en el navegador:
 
+- **wrangler.toml manda:** Si en Cloudflare ves el aviso *"Environment variables are being managed through wrangler.toml. Only Secrets can be managed via the Dashboard"*, entonces **las variables/Secrets del Dashboard no se inyectan en las Functions**. La URL del runner tiene que estar en `wrangler.toml`. En la sección `[env.production.vars]` (o la que uses) añade:  
+  `RUNNER_URL = "https://tu-app.up.railway.app"`  
+  Sustituye por tu URL de Railway, haz commit y push para que el siguiente despliegue use esa variable.
 - **Diagnóstico:** Abre en el navegador `https://tu-sitio.pages.dev/api/runner-ping`. Esa ruta prueba la conexión desde Cloudflare al runner y devuelve `ok`, `error` o el mensaje exacto del fallo.
-- **RUNNER_URL como Plaintext:** Prueba a crear la variable como **Plaintext** (no Secret) con valor exacto `https://tu-app.up.railway.app` (sin barra final, sin espacios). Si así funciona, el problema puede ser cómo se inyecta el Secret.
-- **Entorno:** Comprueba que `RUNNER_URL` esté definida para **Production** (o el entorno que uses). Tras cambiar variables, haz un **nuevo despliegue**.
+- **Entorno:** Comprueba que `RUNNER_URL` en wrangler.toml esté en el entorno correcto (p. ej. `[env.production.vars]`). Tras cambiar el archivo, haz un **nuevo despliegue**.
 - **Sin caché:** Las respuestas del proxy ya envían `Cache-Control: no-store` para no cachear errores.
 
 ### Arquitectura:

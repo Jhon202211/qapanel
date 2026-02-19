@@ -5,6 +5,9 @@ pages_build_output_dir = "."
 [env.production]
 name = "playwright-panel"
 
+# Con wrangler.toml, las variables del Dashboard pueden no llegar a las Functions.
+# RUNNER_URL debe estar aquí (o usar wrangler secret put RUNNER_URL).
 [env.production.vars]
 NODE_ENV = "production"
+RUNNER_URL = "https://playwright-runner-production-8434.up.railway.app"
 
