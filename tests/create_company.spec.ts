@@ -161,19 +161,6 @@ test('test_create_company', async ({ page }) => {
     // Configurar timeout de la página
     page.setDefaultTimeout(50000);
     
-    // Maximizar la ventana del navegador a pantalla completa
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    // También intentar maximizar si es posible
-    try {
-      await page.evaluate(() => {
-        if (window.screen && window.screen.availWidth && window.screen.availHeight) {
-          window.resizeTo(window.screen.availWidth, window.screen.availHeight);
-        }
-      });
-    } catch (e) {
-      // Ignorar si no se puede maximizar
-    }
-
     const companyPage = new CompanyPage(page);
     await companyPage.login(USER_EMAIL, USER_PASSWORD);
     

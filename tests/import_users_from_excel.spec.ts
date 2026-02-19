@@ -11,8 +11,6 @@ const RECORDS_COUNT = 25; // Cantidad de registros a generar por ejecución
 test('test', async ({ page }) => {
   // Generar archivo Excel con nuevos registros
   const filePath = generateExcelFile(RECORDS_COUNT);
-  await page.setViewportSize({ width: 1920, height: 1080 });
-
   // Login
   await page.goto(`${BASE_URL}/login`);
   await page.waitForLoadState('networkidle');

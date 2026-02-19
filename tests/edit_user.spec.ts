@@ -16,19 +16,6 @@ const USER_TO_EDIT = process.env.USER_TO_EDIT || '';
 test('Editar usuario', async ({ page }) => {
   test.skip(!USER_TO_EDIT, 'Define USER_TO_EDIT en .env con el correo del usuario a editar');
   try {
-    // Maximizar la ventana del navegador a pantalla completa
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    // También intentar maximizar si es posible
-    try {
-      await page.evaluate(() => {
-        if (window.screen && window.screen.availWidth && window.screen.availHeight) {
-          window.resizeTo(window.screen.availWidth, window.screen.availHeight);
-        }
-      });
-    } catch (e) {
-      // Ignorar si no se puede maximizar
-    }
-
     // ========== VISTA 1: LOGIN ==========
     await page.goto(`${BASE_URL}/login`);
     await page.waitForLoadState('networkidle');
