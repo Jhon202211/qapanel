@@ -130,6 +130,13 @@ Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), desp
    - Guarda y haz un **nuevo despliegue** (Redeploy) para que la variable se aplique.
 3. El panel seguirá llamando a `/api/list-tests` y `/api/run-command`; la función en `functions/api/` hará de proxy al runner usando `RUNNER_URL`.
 
+**Si el panel sigue diciendo "No se pudo conectar al runner"** aunque el runner responda en el navegador:
+
+- **Diagnóstico:** Abre en el navegador `https://tu-sitio.pages.dev/api/runner-ping`. Esa ruta prueba la conexión desde Cloudflare al runner y devuelve `ok`, `error` o el mensaje exacto del fallo.
+- **RUNNER_URL como Plaintext:** Prueba a crear la variable como **Plaintext** (no Secret) con valor exacto `https://tu-app.up.railway.app` (sin barra final, sin espacios). Si así funciona, el problema puede ser cómo se inyecta el Secret.
+- **Entorno:** Comprueba que `RUNNER_URL` esté definida para **Production** (o el entorno que uses). Tras cambiar variables, haz un **nuevo despliegue**.
+- **Sin caché:** Las respuestas del proxy ya envían `Cache-Control: no-store` para no cachear errores.
+
 ### Arquitectura:
 
 ```

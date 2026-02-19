@@ -12,11 +12,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-function jsonResponse(data: object, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+function jsonResponse(data: object, status = 200, noCache = false) {
+  const headers: Record<string, string> = { ...corsHeaders, 'Content-Type': 'application/json' };
+  if (noCache) headers['Cache-Control'] = 'no-store, no-cache, must-revalidate';
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 export async function onRequest(context: {
@@ -30,7 +29,7 @@ export async function onRequest(context: {
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname.replace('/api/', '');
-  const runnerBase = (env.RUNNER_URL || '').replace(/\/$/, '');
+  const runnerBase = (env.RUNNER_URL || '').trim().replace(/\/$/, '');
 
   if (request.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -49,13 +48,53 @@ export async function onRequest(context: {
     });
   }
 
+  // API: Diagnóstico — comprueba si la Function puede alcanzar el runner (para depurar)
+  if (path === 'runner-ping' && request.method === 'GET') {
+    if (!runnerBase) {
+      return jsonResponse({ ok: false, error: 'RUNNER_URL no está definida en Cloudflare' }, 200, true);
+    }
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+      const res = await fetch(runnerBase, {
+        signal: controller.signal,
+        headers: { 'User-Agent': 'PlaywrightPanel-Cloudflare/1.0' },
+      });
+      clearTimeout(timeoutId);
+      const text = await res.text();
+      return jsonResponse(
+        {
+          ok: res.ok,
+          status: res.status,
+          runnerUrl: runnerBase,
+          bodyPreview: text.slice(0, 100),
+          message: res.ok ? 'Conexión al runner OK' : `Runner respondió con ${res.status}`,
+        },
+        200,
+        true
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return jsonResponse(
+        {
+          ok: false,
+          runnerUrl: runnerBase,
+          error: msg,
+          message: 'No se pudo conectar desde Cloudflare al runner. Prueba RUNNER_URL como variable Plaintext o revisa que la URL sea exactamente la de Railway.',
+        },
+        200,
+        true
+      );
+    }
+  }
+
   // API: List tests — proxy al runner si RUNNER_URL está definida
   if (path === 'list-tests' && request.method === 'GET') {
     if (!runnerBase) {
       return jsonResponse({
         tests: [],
         note: 'Esta funcionalidad requiere un servicio externo para acceder al sistema de archivos. Configura RUNNER_URL en Cloudflare (Variables de entorno).',
-      });
+      }, 200, true);
     }
     try {
       const controller = new AbortController();
@@ -71,7 +110,7 @@ export async function onRequest(context: {
         name: f.replace(/\.spec\.(ts|js)$/, ''),
         path: `tests/${f}`,
       }));
-      return jsonResponse({ tests });
+      return jsonResponse({ tests }, 200, true);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       const isTimeout = msg.includes('abort') || msg.includes('timeout');
@@ -84,7 +123,8 @@ export async function onRequest(context: {
           note,
           error: msg,
         },
-        200
+        200,
+        true
       );
     }
   }
@@ -127,19 +167,24 @@ export async function onRequest(context: {
       clearTimeout(timeoutId);
       const result = await runRes.json();
       // El panel espera { success, stdout, stderr, testFailed? }
-      return jsonResponse({
-        success: result.success,
-        stdout: result.stdout ?? '',
-        stderr: result.stderr ?? '',
-        testFailed: result.success === false,
-      });
+      return jsonResponse(
+        {
+          success: result.success,
+          stdout: result.stdout ?? '',
+          stderr: result.stderr ?? '',
+          testFailed: result.success === false,
+        },
+        200,
+        true
+      );
     } catch (err) {
       return jsonResponse(
         {
           success: false,
           error: err instanceof Error ? err.message : 'Error desconocido',
         },
-        500
+        500,
+        true
       );
     }
   }
