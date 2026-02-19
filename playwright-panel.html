@@ -940,8 +940,11 @@
                             setTimeout(checkAndRefresh, 2000);
                         }
                     } else {
-                        console.error('Result.success es false:', result);
-                        throw new Error(result.error || 'Error desconocido');
+                        // Backend devolvió success: false (p. ej. test falló o Playwright falló): mostrar stdout/stderr para ver el error real
+                        if (result.stdout) appendOutput(result.stdout);
+                        if (result.stderr) appendOutput(`\n⚠️ stderr:\n${result.stderr}`);
+                        const msg = result.error || result.stderr?.slice(0, 200) || result.stdout?.slice(0, 200) || 'Error desconocido';
+                        throw new Error(msg);
                     }
                 } else {
                     console.error('Response no es ok, status:', response.status);
