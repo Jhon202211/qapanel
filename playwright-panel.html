@@ -1470,6 +1470,8 @@ const response = await fetch(apiUrl('/api/list-tests'));
                         if (result.url) {
                             appendOutput(`🌐 URL del reporte: ${result.url}`);
                             appendOutput(`💡 Si no se abrió automáticamente, haz clic en el enlace o cópialo en tu navegador`);
+                            // En producción (backend en Railway) la URL es pública: abrir en nueva pestaña
+                            try { window.open(result.url, '_blank', 'noopener'); } catch (e) { /* bloqueado por el navegador */ }
                         }
                         updateStatus('Reporte abierto exitosamente', 'success');
                     } else {

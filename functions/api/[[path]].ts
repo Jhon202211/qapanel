@@ -189,6 +189,44 @@ export async function onRequest(context: {
     }
   }
 
+  // API: Open report — proxy al runner; el runner devuelve la URL pública del reporte (/report)
+  if (path === 'open-report' && request.method === 'GET') {
+    if (!runnerBase) {
+      return jsonResponse(
+        {
+          success: false,
+          error: 'Para ver el reporte en producción configura RUNNER_URL (URL de tu runner en Railway).',
+          suggestion: 'Configura RUNNER_URL en Cloudflare (Variables de entorno o wrangler.toml).',
+        },
+        200,
+        true
+      );
+    }
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const res = await fetch(`${runnerBase}/api/open-report`, {
+        method: 'GET',
+        headers: { 'User-Agent': 'PlaywrightPanel-Cloudflare/1.0' },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      return jsonResponse(data, res.ok ? 200 : res.status, true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return jsonResponse(
+        {
+          success: false,
+          error: `No se pudo conectar al runner para obtener el reporte: ${msg}`,
+          suggestion: 'Comprueba que RUNNER_URL sea correcta y que el runner esté desplegado con la ruta /api/open-report.',
+        },
+        200,
+        true
+      );
+    }
+  }
+
   // API: Read test (limitado — el runner actual no expone lectura de archivos)
   if (path === 'read-test' && request.method === 'POST') {
     return jsonResponse(
