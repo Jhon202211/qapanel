@@ -1,4 +1,8 @@
-# 🚀 Guía Paso a Paso: Desplegar en Cloudflare Pages
+# 🚀 Guía de Despliegue
+
+Guía única para desplegar el Panel de Control Playwright en Cloudflare Pages y/o Railway.
+
+---
 
 ## 📋 Pre-requisitos
 
@@ -8,229 +12,197 @@
 
 ---
 
-## 🎯 Opción Recomendada: Panel Estático en Cloudflare Pages
-
-### Paso 1: Acceder a Cloudflare Dashboard
-
-1. Ve a [https://dash.cloudflare.com/](https://dash.cloudflare.com/)
-2. Inicia sesión con tu cuenta
-3. En el menú lateral, haz clic en **"Pages"**
-
-### Paso 2: Crear Nuevo Proyecto
-
-1. Haz clic en el botón **"Create a project"**
-2. Selecciona **"Connect to Git"**
-3. Autoriza Cloudflare Pages a acceder a tu cuenta de GitHub
-4. Selecciona el repositorio: `Jhon202211/qapanel` o `queodevteam/playwright`
-5. Haz clic en **"Begin setup"**
-
-### Paso 3: Configurar Build Settings
-
-En la pantalla de configuración, usa estos valores:
-
-```
-Framework preset: None
-Build command: (déjalo vacío o usa: echo "No build required")
-Build output directory: /
-Root directory: /
-```
-
-**Explicación:**
-- **Framework preset**: `None` porque es un sitio estático HTML
-- **Build command**: No necesitamos compilar nada
-- **Build output directory**: `/` (raíz del proyecto)
-- **Root directory**: `/` (raíz del proyecto)
-
-### Paso 4: Configurar Variables de Entorno (Opcional)
-
-Si necesitas variables de entorno:
-
-1. Haz clic en **"Environment variables (advanced)"**
-2. Agrega las variables necesarias:
-   - `NODE_ENV` = `production`
-   - `BASE_URL` = `https://alex.queo.dev` (o tu URL)
-   - **`RUNNER_URL`** = URL de tu runner en Railway (ej. `https://playwright-runner-production-8434.up.railway.app`)  
-     → **Necesaria para que el panel en Cloudflare ejecute y liste tests** usando el backend desplegado en Railway. Sin esta variable, el panel mostrará el mensaje de "servicio externo requerido".
-   - Cualquier otra variable que uses en tu código
-
-### Paso 5: Desplegar
-
-1. Haz clic en **"Save and Deploy"**
-2. Cloudflare comenzará a construir y desplegar tu proyecto
-3. Espera 1-2 minutos mientras se completa el despliegue
-4. Una vez completado, verás una URL como: `https://playwright-panel-xxxxx.pages.dev`
-
-### Paso 6: Configurar Dominio Personalizado (Opcional)
-
-1. En la página del proyecto, ve a **"Custom domains"**
-2. Haz clic en **"Set up a custom domain"**
-3. Ingresa tu dominio (ej: `playwright.queo.dev`)
-4. Sigue las instrucciones para configurar DNS
-
----
-
 ## ⚠️ Limitaciones Importantes
 
-### ❌ Lo que NO funcionará en Cloudflare Pages:
+**Playwright NO puede ejecutarse directamente en Cloudflare Pages/Workers** debido a:
+
+- ❌ No hay acceso al sistema de archivos completo
+- ❌ No se pueden ejecutar procesos hijos (`exec`, `spawn`)
+- ❌ No hay navegadores instalados
+- ❌ Limitaciones de tiempo de ejecución (10-30 segundos en Workers)
+
+### ❌ Lo que NO funcionará en Cloudflare Pages
 
 - **Ejecutar tests de Playwright**: No hay acceso al sistema de archivos ni a procesos hijos
 - **Codegen**: Requiere ejecutar comandos del sistema
 - **Leer/Escribir archivos de tests**: No hay acceso al sistema de archivos
 - **Ejecutar comandos del servidor**: No se pueden ejecutar `exec` o `spawn`
 
-### ✅ Lo que SÍ funcionará:
+### ✅ Lo que SÍ funcionará
 
 - **Panel HTML**: Se mostrará correctamente
 - **Interfaz de usuario**: Todos los elementos visuales funcionarán
-- **APIs básicas**: Las funciones en `functions/api/` responderán (con limitaciones)
+- **APIs vía proxy**: Las funciones en `functions/api/` pueden hacer proxy al runner en Railway (listar tests, ejecutar, reporte)
 
 ---
 
-## 🔄 Alternativa: Desplegar Servidor Completo
+## Opciones de Despliegue
 
-Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), despliega el servidor Express en:
+### Opción 1: Panel en Cloudflare Pages (recomendado para la UI)
 
-### Railway (Recomendado - Gratis con límites)
+Despliega solo el panel HTML como sitio estático. Para ejecutar tests y ver el reporte necesitarás el **playwright-runner** en Railway (opción híbrida).
 
-1. Ve a [https://railway.app/](https://railway.app/)
-2. Inicia sesión con GitHub
-3. Haz clic en **"New Project"** → **"Deploy from GitHub repo"**
-4. Selecciona tu repositorio
-5. Railway detectará automáticamente `package.json` y `server.js`
-6. Configura variables de entorno si es necesario
-7. El servidor se desplegará automáticamente
-8. Obtendrás una URL como: `https://playwright-panel.up.railway.app`
+#### Paso 1: Acceder a Cloudflare Dashboard
 
-### Render (Alternativa)
+1. Ve a [https://dash.cloudflare.com/](https://dash.cloudflare.com/)
+2. Inicia sesión con tu cuenta
+3. En el menú lateral, haz clic en **"Pages"**
 
-1. Ve a [https://render.com/](https://render.com/)
-2. Inicia sesión con GitHub
-3. Haz clic en **"New"** → **"Web Service"**
-4. Conecta tu repositorio
-5. Configura:
-   - **Name**: `playwright-panel`
-   - **Environment**: `Node`
-   - **Build Command**: `npm install`
-   - **Start Command**: `npm start`
-6. Agrega variables de entorno
-7. Haz clic en **"Create Web Service"**
+#### Paso 2: Crear nuevo proyecto
+
+1. Haz clic en **"Create a project"**
+2. Selecciona **"Connect to Git"**
+3. Autoriza Cloudflare Pages a acceder a tu cuenta de GitHub
+4. Selecciona el repositorio: `Jhon202211/qapanel` o `queodevteam/playwright`
+5. Selecciona la rama (ej. `alexdev`) y haz clic en **"Begin setup"**
+
+#### Paso 3: Configurar Build
+
+```
+Framework preset: None
+Build command: (vacío o echo "No build required")
+Build output directory: /
+Root directory: /
+```
+
+- **Root directory** debe ser la raíz para que se desplieguen también `functions/` y `api-config.js`.
+
+#### Paso 4: Variables de entorno (opcional)
+
+1. En **"Environment variables (advanced)"** agrega si aplica:
+   - `NODE_ENV` = `production`
+   - **`RUNNER_URL`** = URL de tu runner en Railway (ej. `https://playwright-runner-production-8434.up.railway.app`)  
+     Necesaria para que el panel liste y ejecute tests vía proxy. Si Cloudflare gestiona vars con `wrangler.toml`, define `RUNNER_URL` ahí (ver sección híbrida).
+
+#### Paso 5: Desplegar
+
+1. **"Save and Deploy"**
+2. Espera 1–2 minutos. Obtendrás una URL como `https://tu-proyecto.pages.dev`
+
+#### Paso 6: Dominio personalizado (opcional)
+
+En el proyecto → **Custom domains** → **Set up a custom domain** → configura DNS según las instrucciones.
 
 ---
 
-## 🔗 Configuración Híbrida (Recomendada para Producción)
+### Opción 2: Servidor completo en Railway o Render
 
-### Conectar el panel (Cloudflare) con el runner (Railway)
+Para **todas** las funcionalidades (ejecutar tests, codegen, etc.) en un solo servicio, despliega el servidor Express del repo (no el playwright-runner) en un servicio Node:
 
-1. Despliega el **playwright-runner** en Railway y anota la URL (ej. `https://playwright-runner-production-8434.up.railway.app`).
-2. En tu proyecto en **Cloudflare Pages**:
-   - Ve a **Settings** → **Environment variables**.
-   - Añade una variable:
-     - **Variable name:** `RUNNER_URL`
-     - **Value:** `https://tu-app.up.railway.app` (tu URL de Railway, **sin** barra final).
-   - Guarda y haz un **nuevo despliegue** (Redeploy) para que la variable se aplique.
-3. El panel seguirá llamando a `/api/list-tests` y `/api/run-command`; la función en `functions/api/` hará de proxy al runner usando `RUNNER_URL`.
+#### Railway
 
-**Si el panel sigue diciendo "No se pudo conectar al runner"** aunque el runner responda en el navegador:
+1. Ve a [Railway.app](https://railway.app/), inicia sesión con GitHub
+2. **New Project** → **Deploy from GitHub repo** → elige el repositorio
+3. Railway detectará `package.json` y `server.js`
+4. Configura variables de entorno si hace falta
+5. URL resultante tipo: `https://tu-app.up.railway.app`
 
-- **wrangler.toml manda:** Si en Cloudflare ves el aviso *"Environment variables are being managed through wrangler.toml. Only Secrets can be managed via the Dashboard"*, entonces **las variables/Secrets del Dashboard no se inyectan en las Functions**. La URL del runner tiene que estar en `wrangler.toml`. En la sección `[env.production.vars]` (o la que uses) añade:  
-  `RUNNER_URL = "https://tu-app.up.railway.app"`  
-  Sustituye por tu URL de Railway, haz commit y push para que el siguiente despliegue use esa variable.
-- **Diagnóstico:** Abre en el navegador `https://tu-sitio.pages.dev/api/runner-ping`. Esa ruta prueba la conexión desde Cloudflare al runner y devuelve `ok`, `error` o el mensaje exacto del fallo.
-- **Entorno:** Comprueba que `RUNNER_URL` en wrangler.toml esté en el entorno correcto (p. ej. `[env.production.vars]`). Tras cambiar el archivo, haz un **nuevo despliegue**.
-- **Sin caché:** Las respuestas del proxy ya envían `Cache-Control: no-store` para no cachear errores.
+#### Render
 
-**Si "Ver Reporte HTML" sigue dando 404:**
+1. [Render.com](https://render.com/) → **New** → **Web Service**
+2. Conecta el repositorio
+3. **Build Command**: `npm install` · **Start Command**: `npm start` · **Environment**: Node
+4. Añade variables de entorno y crea el servicio
 
-1. **Comprueba que las Functions se despliegan:** Abre `https://tu-sitio.pages.dev/api/status` en el navegador. Si ves JSON (p. ej. `{"status":"running",...}`), las Functions están activas. Si también da 404, el proyecto no está ejecutando la carpeta `functions/`.
-2. **Despliega desde la rama correcta:** En Cloudflare Pages → Settings → Builds & deployments, asegúrate de que la rama de producción sea la que tiene los cambios (p. ej. `alexdev`). Haz **Redeploy** desde esa rama.
-3. **Estructura del repo:** El `functions/api/` debe estar en la **raíz** del proyecto que Cloudflare construye. Si en "Build configuration" tienes "Root directory" en un subcarpeta, esa carpeta debe contener también `functions/`.
+---
 
-### Arquitectura:
+### Opción 3: Híbrido (recomendado para producción)
+
+Panel en **Cloudflare Pages** y ejecución de tests en **playwright-runner** en **Railway**.
+
+#### 1. Desplegar playwright-runner en Railway
+
+- Repo del runner: el proyecto **playwright-runner** (backend mínimo: `/tests`, `/run`, `/api/open-report`, `/report`).
+- Despliega ese repo en Railway y anota la URL (ej. `https://playwright-runner-production-8434.up.railway.app`).
+
+#### 2. Configurar el panel en Cloudflare
+
+- **Variables**: En el proyecto de Pages → **Settings** → **Environment variables** añade:
+  - **Name:** `RUNNER_URL`
+  - **Value:** `https://tu-runner.up.railway.app` (sin barra final)
+- Si Cloudflare indica que las variables se gestionan con **wrangler.toml**, añade en `[env.production.vars]`:
+  ```ini
+  RUNNER_URL = "https://tu-runner.up.railway.app"
+  ```
+- Guarda y haz un **Redeploy** para que las Functions usen `RUNNER_URL`.
+
+#### 3. Ver Reporte HTML en producción
+
+En **`api-config.js`** del repo del panel define la URL del runner:
+
+```javascript
+window.REPORT_SERVICE_URL = 'https://tu-runner.up.railway.app';
+```
+
+El panel llamará directamente al runner para el reporte (no depende del proxy). El runner debe tener las rutas `/api/open-report` y `/report` y haber ejecutado al menos un test para que exista el reporte.
+
+#### Si el panel no conecta con el runner
+
+- **Diagnóstico:** Abre `https://tu-sitio.pages.dev/api/runner-ping`. Comprueba si la conexión al runner devuelve ok o error.
+- **wrangler.toml:** Si las variables se gestionan ahí, `RUNNER_URL` debe estar en la sección correcta (p. ej. `[env.production.vars]`). Tras cambiar, haz **Redeploy**.
+- **Sin caché:** El proxy ya envía `Cache-Control: no-store`.
+
+#### Si "Ver Reporte HTML" da 404
+
+1. **Comprueba Functions:** Abre `https://tu-sitio.pages.dev/api/status`. Si ves JSON, las Functions están activas; si 404, revisa que la rama y el root incluyan `functions/`.
+2. **Rama y redeploy:** Asegúrate de desplegar desde la rama con los últimos cambios (ej. `alexdev`) y haz **Redeploy**.
+3. **REPORT_SERVICE_URL:** Comprueba que en `api-config.js` esté definida la URL del runner (igual que `RUNNER_URL`).
+
+#### Arquitectura
 
 ```
 ┌─────────────────────────┐
 │  Cloudflare Pages       │
 │  (Panel HTML estático)  │
-│  playwright-panel.html   │
 │  + functions/api (proxy)│
 └───────────┬─────────────┘
-            │
-            │ RUNNER_URL
-            │
-┌───────────▼─────────────┐
-│  Railway (playwright-   │
-│  runner)                │
+            │ RUNNER_URL / REPORT_SERVICE_URL
+            ▼
+┌─────────────────────────┐
+│  Railway                │
+│  (playwright-runner)     │
 │  GET /tests, POST /run  │
-│  - Listar tests         │
-│  - Ejecutar tests       │
+│  GET /api/open-report   │
+│  GET /report (HTML)     │
 └─────────────────────────┘
 ```
 
-### Pasos:
+---
 
-1. **Despliega el panel en Cloudflare Pages** (sigue los pasos 1-6 arriba)
-2. **Despliega el servidor en Railway/Render** (sigue las instrucciones de Railway/Render)
-3. **Para que "Ver Reporte HTML" funcione en producción** (evitar 404 del proxy de Cloudflare):
-   - Edita **`api-config.js`** y define la URL de tu **playwright-runner** en Railway:
-   ```javascript
-   window.REPORT_SERVICE_URL = 'https://tu-runner.up.railway.app';
-   ```
-   - El panel llamará directamente al runner para el reporte. Asegúrate de haber desplegado el **playwright-runner** con las rutas `/api/open-report` y `/report` (y de haber ejecutado al menos un test para que exista el reporte).
+## 📁 Archivos de configuración
+
+- **wrangler.toml** – Configuración de Cloudflare Pages/Workers y vars (ej. `RUNNER_URL`)
+- **functions/api/[[path]].ts** – Funciones serverless (proxy a list-tests, run-command, open-report, etc.)
+- **api-config.js** – En el cliente: `API_BASE` (opcional) y `REPORT_SERVICE_URL` (recomendado en producción para el reporte)
+- **_redirects** – Reglas de redirección si se usan
+- **cloudflare-pages.json** – Configuración alternativa de Pages si aplica
+
+El **server.js** del repo del panel sigue funcionando en local con `npm start`.
 
 ---
 
-## 📁 Archivos Creados para Cloudflare
+## 🧪 Probar el despliegue
 
-Se han creado los siguientes archivos:
-
-- ✅ `wrangler.toml` - Configuración de Cloudflare Workers/Pages
-- ✅ `functions/api/[[path]].ts` - Funciones serverless (con limitaciones)
-- ✅ `_redirects` - Reglas de redirección para APIs
-- ✅ `cloudflare-pages.json` - Configuración alternativa
-- ✅ `index.html` - Redirección al panel principal
-- ✅ `DEPLOY.md` - Documentación técnica detallada
+1. Visita la URL de Cloudflare Pages; deberías ver el panel.
+2. Prueba `https://tu-sitio.pages.dev/api/status` (debe devolver JSON).
+3. Con híbrido: ejecuta un test desde el panel y luego **Ver Reporte HTML** (debe abrir la URL del reporte del runner).
 
 ---
 
-## 🧪 Probar el Despliegue
+## 🆘 Solución de problemas
 
-1. Una vez desplegado, visita la URL de Cloudflare Pages
-2. Deberías ver el panel de Playwright
-3. Las funciones básicas (como `/api/status`) deberían responder
-4. Las funciones que requieren ejecutar comandos mostrarán mensajes de error explicativos
-
----
-
-## 🆘 Solución de Problemas
-
-### Error: "Build failed"
-- Verifica que el repositorio esté correctamente conectado
-- Asegúrate de que `playwright-panel.html` esté en la raíz del proyecto
-
-### Error: "404 Not Found"
-- Verifica que `index.html` o `playwright-panel.html` existan
-- Revisa la configuración de "Build output directory"
-
-### APIs no funcionan
-- Esto es esperado: Cloudflare Workers no puede ejecutar Playwright
-- Considera usar la opción híbrida (Cloudflare + Railway/Render)
+| Problema | Qué revisar |
+|----------|-------------|
+| Build failed | Repo conectado, `playwright-panel.html` en la raíz (o en el root configurado) |
+| 404 en la página | Que existan `index.html` o `playwright-panel.html` y que "Build output directory" sea correcto |
+| APIs no responden / 404 | Que la carpeta `functions/` esté en la raíz del proyecto que se despliega y que la rama sea la correcta |
+| No se conecta al runner | `RUNNER_URL` en Cloudflare (Dashboard o wrangler.toml) y **Redeploy** |
+| Reporte no se abre | `REPORT_SERVICE_URL` en `api-config.js`, runner desplegado con `/api/open-report` y `/report`, y al menos un test ejecutado |
 
 ---
 
-## 📞 Próximos Pasos
+## 📞 Resumen y próximos pasos
 
-1. ✅ Despliega en Cloudflare Pages siguiendo los pasos 1-6
-2. 🔄 Si necesitas funcionalidad completa, despliega también en Railway/Render
-3. 🔗 Configura la arquitectura híbrida si es necesario
-4. 🎨 Personaliza el dominio y la configuración según tus necesidades
-
----
-
-## 💡 Recomendación Final
-
-Para **desarrollo y pruebas locales**: Sigue usando `npm start` (servidor Express local)
-
-Para **producción con funcionalidad completa**: Usa la arquitectura híbrida (Cloudflare Pages + Railway/Render)
-
-Para **solo mostrar el panel UI**: Cloudflare Pages es suficiente
-
+- **Desarrollo local:** `npm start` (servidor Express del panel).
+- **Solo UI en producción:** Despliega el panel en Cloudflare Pages (Opción 1).
+- **Producción con tests y reporte:** Usa la opción híbrida (Opción 3): panel en Cloudflare + **playwright-runner** en Railway y `REPORT_SERVICE_URL` en `api-config.js`.
