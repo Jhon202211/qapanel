@@ -1461,7 +1461,10 @@ const response = await fetch(apiUrl('/api/list-tests'));
             appendOutput('\n$ Abriendo reporte HTML...');
             
             try {
-                const response = await fetch(apiUrl('/api/open-report'));
+                // Si REPORT_SERVICE_URL está definida (producción), llamar al runner directamente para evitar 404 del proxy
+                const reportBase = (window.REPORT_SERVICE_URL || '').trim().replace(/\/$/, '');
+                const reportApiUrl = reportBase ? (reportBase + '/api/open-report') : apiUrl('/api/open-report');
+                const response = await fetch(reportApiUrl);
                 
                 if (response.ok) {
                     const result = await response.json();

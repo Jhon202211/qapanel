@@ -170,12 +170,12 @@ Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), desp
 
 1. **Despliega el panel en Cloudflare Pages** (sigue los pasos 1-6 arriba)
 2. **Despliega el servidor en Railway/Render** (sigue las instrucciones de Railway/Render)
-3. **Configura la URL del backend** para que el panel (Cloudflare) llame al servidor en Railway:
-   - Edita **`api-config.js`** y define la URL de tu app en Railway:
+3. **Para que "Ver Reporte HTML" funcione en producción** (evitar 404 del proxy de Cloudflare):
+   - Edita **`api-config.js`** y define la URL de tu **playwright-runner** en Railway:
    ```javascript
-   window.API_BASE = 'https://tu-proyecto.up.railway.app';
+   window.REPORT_SERVICE_URL = 'https://tu-runner.up.railway.app';
    ```
-   - Así el botón "Ver Reporte HTML" y el resto de APIs (listar tests, ejecutar, etc.) usarán el backend en Railway y no darán 404 en producción.
+   - El panel llamará directamente al runner para el reporte. Asegúrate de haber desplegado el **playwright-runner** con las rutas `/api/open-report` y `/report` (y de haber ejecutado al menos un test para que exista el reporte).
 
 ---
 
