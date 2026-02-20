@@ -61,17 +61,15 @@ Para tener todas las funcionalidades del servidor Express (ejecutar tests, codeg
 5. Agrega variables de entorno
 6. Despliega
 
-### Opción 3: Híbrido (Panel en Cloudflare + API en otro servicio)
+### Opción 3: Híbrido (Panel en Cloudflare + API en Railway)
 
 1. Despliega el panel HTML en Cloudflare Pages (Opción 1)
-2. Despliega el servidor Express en Railway/Render (Opción 2)
-3. Modifica `playwright-panel.html` para que las APIs apunten a tu servidor externo:
-
-```javascript
-// En playwright-panel.html, cambiar:
-const API_BASE = 'https://tu-servidor-railway.up.railway.app';
-// en lugar de usar rutas relativas
-```
+2. Despliega el servidor Express en Railway (Opción 2)
+3. Configura la URL del backend en **`api-config.js`**:
+   ```javascript
+   window.API_BASE = 'https://tu-proyecto.up.railway.app';
+   ```
+   Así "Ver Reporte HTML" y el resto de APIs llamarán al backend en Railway en producción.
 
 ## Archivos de Configuración Creados
 

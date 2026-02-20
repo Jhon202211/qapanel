@@ -19,7 +19,7 @@ async function loadTestList() {
     selector.innerHTML = '<option value="">Seleccionar test...</option>';
     
     try {
-        const response = await fetch('/api/list-tests');
+        const response = await fetch((window.apiUrl || (p => p))('/api/list-tests'));
         if (response.ok) {
             const tests = await response.json();
             tests.forEach(test => {
@@ -50,7 +50,7 @@ async function loadTest() {
     try {
         // Intentar leer el estado del servidor para ver si codegen está activo
         // Por ahora solo cargamos el test normalmente
-        const response = await fetch('/api/read-test', {
+        const response = await fetch((window.apiUrl || (p => p))('/api/read-test'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filePath: selectedTest })
@@ -93,7 +93,7 @@ async function saveTest() {
     }
     
     try {
-        const response = await fetch('/api/write-test', {
+        const response = await fetch((window.apiUrl || (p => p))('/api/write-test'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 

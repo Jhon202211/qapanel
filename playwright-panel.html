@@ -669,7 +669,13 @@
         </div>
     </div>
 
+    <!-- En producción (panel en Cloudflare + backend en Railway), configura la URL del backend en api-config.js -->
+    <script src="api-config.js"></script>
     <script>
+        // URL base del API: vacía en local (mismo servidor); en producción definir window.API_BASE en api-config.js
+        window.API_BASE = window.API_BASE || '';
+        window.apiUrl = function(path) { return (window.API_BASE || '') + (path.startsWith('/') ? path : '/' + path); };
+
         let isRunning = false;
         let outputVisible = true;
 
@@ -744,7 +750,7 @@
             appendOutput(`\n$ ${command}`);
             
             try {
-                const response = await fetch('/api/run-command', {
+                const response = await fetch(apiUrl('/api/run-command'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -832,7 +838,7 @@
             
             try {
                 console.log('Enviando request al servidor...');
-                const response = await fetch('/api/run-command', {
+                const response = await fetch(apiUrl('/api/run-command'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -907,7 +913,7 @@
                                     // Verificar si el archivo existe consultando la API
                                     // IMPORTANTE: Solo listar tests, NO leer el contenido del archivo
                                     // para evitar interferir con codegen que está escribiendo
-                                    const response = await fetch('/api/list-tests');
+                                    const response = await fetch(apiUrl('/api/list-tests'));
                                     if (response.ok) {
                                         const data = await response.json();
                                         const { tests } = normalizeTestsResponse(data);
@@ -1014,11 +1020,11 @@
             container.innerHTML = '<div style="text-align: center; padding: 20px; color: #6c757d;">Cargando tests...</div>';
             
             try {
-                const response = await fetch('/api/list-tests');
+const response = await fetch(apiUrl('/api/list-tests'));
                 if (response.ok) {
                     const data = await response.json();
                     const { tests, note } = normalizeTestsResponse(data);
-                    
+
                     // Si hay una nota (limitación de Cloudflare o error de conexión al runner), mostrarla
                     if (note) {
                         const errorDetail = data.error ? ` <span style="font-size: 0.85em; color: #6c757d;">(${data.error})</span>` : '';
@@ -1130,7 +1136,7 @@
             if (!selector) return;
             
             try {
-                const response = await fetch('/api/list-tests');
+                const response = await fetch(apiUrl('/api/list-tests'));
                 if (response.ok) {
                     const data = await response.json();
                     const { tests, note } = normalizeTestsResponse(data);
@@ -1176,7 +1182,7 @@
                 appendOutput(`\n📖 Leyendo test: ${testPath}`);
                 
                 // Leer el contenido del test
-                const response = await fetch('/api/read-test', {
+                const response = await fetch(apiUrl('/api/read-test'), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1280,7 +1286,7 @@
                 
                 // Escribir el contenido modificado al archivo temporal
                 try {
-                    const writeResponse = await fetch('/api/write-test', {
+                    const writeResponse = await fetch(apiUrl('/api/write-test'), {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1455,7 +1461,7 @@
             appendOutput('\n$ Abriendo reporte HTML...');
             
             try {
-                const response = await fetch('/api/open-report');
+                const response = await fetch(apiUrl('/api/open-report'));
                 
                 if (response.ok) {
                     const result = await response.json();
