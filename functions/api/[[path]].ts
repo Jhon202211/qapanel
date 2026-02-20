@@ -28,7 +28,7 @@ export async function onRequest(context: {
 }) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const path = url.pathname.replace('/api/', '');
+  const path = url.pathname.replace(/^\/api\/?/, '').replace(/\/$/, '').split('/')[0] || '';
   const runnerBase = (env.RUNNER_URL || '').trim().replace(/\/$/, '');
 
   if (request.method === 'OPTIONS') {

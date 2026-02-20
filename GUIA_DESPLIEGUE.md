@@ -139,6 +139,12 @@ Si necesitas **TODAS** las funcionalidades (ejecutar tests, codegen, etc.), desp
 - **Entorno:** Comprueba que `RUNNER_URL` en wrangler.toml esté en el entorno correcto (p. ej. `[env.production.vars]`). Tras cambiar el archivo, haz un **nuevo despliegue**.
 - **Sin caché:** Las respuestas del proxy ya envían `Cache-Control: no-store` para no cachear errores.
 
+**Si "Ver Reporte HTML" sigue dando 404:**
+
+1. **Comprueba que las Functions se despliegan:** Abre `https://tu-sitio.pages.dev/api/status` en el navegador. Si ves JSON (p. ej. `{"status":"running",...}`), las Functions están activas. Si también da 404, el proyecto no está ejecutando la carpeta `functions/`.
+2. **Despliega desde la rama correcta:** En Cloudflare Pages → Settings → Builds & deployments, asegúrate de que la rama de producción sea la que tiene los cambios (p. ej. `alexdev`). Haz **Redeploy** desde esa rama.
+3. **Estructura del repo:** El `functions/api/` debe estar en la **raíz** del proyecto que Cloudflare construye. Si en "Build configuration" tienes "Root directory" en un subcarpeta, esa carpeta debe contener también `functions/`.
+
 ### Arquitectura:
 
 ```
