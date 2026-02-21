@@ -198,56 +198,27 @@ class PropertyPage {
     try {
       const saveButton = this.page.getByRole('button', { name: 'Guardar datos básicos' });
       await saveButton.waitFor({ state: 'visible', timeout: 5000 });
+      // Esperar respuesta del servidor tras el click (reduce fallos en producción)
+      const responsePromise = this.page.waitForResponse(
+        (res) => res.status() >= 200 && res.status() < 400 && (res.url().includes('property') || res.url().includes('copropiedad') || res.url().includes('api')),
+        { timeout: 15000 }
+      ).catch(() => null);
       await saveButton.click();
       console.log('✅ Botón "Guardar datos básicos" clickeado');
-      
-      // Esperar y validar que aparezca el mensaje de éxito
-      // El mensaje puede tardar en aparecer, así que esperamos un poco más
+      await responsePromise;
       await this.page.waitForTimeout(2000);
       
-      // Buscar el mensaje de éxito "Copropiedad creada correctamente!" 
-      // El mensaje está en un modal de SweetAlert - esperar hasta que aparezca
-      console.log('⏳ Esperando que aparezca el mensaje de éxito...');
+      // Un solo locator que agrupa todas las formas de ver el mensaje de éxito (evita timeouts en producción)
+      const successTimeout = 35000;
+      const successMessage = this.page
+        .getByText('Copropiedad creada correctamente!', { exact: false })
+        .or(this.page.locator('text=/Copropiedad creada correctamente/i'))
+        .or(this.page.locator('.swal2-html-container').filter({ hasText: /copropiedad.*creada/i }))
+        .or(this.page.locator('#swal2-html-container').filter({ hasText: /copropiedad.*creada/i }));
       
-      // Buscar cualquier elemento que contenga el texto exacto (estrategia que funciona)
-      try {
-        const successMessage = this.page.getByText('Copropiedad creada correctamente!', { exact: false });
-        await successMessage.waitFor({ state: 'visible', timeout: 25000 });
-        const isVisible = await successMessage.isVisible();
-        if (isVisible) {
-          console.log('✅ Mensaje de éxito encontrado (texto exacto)');
-        } else {
-          throw new Error('El mensaje no es visible');
-        }
-      } catch (e) {
-        // Estrategia alternativa: Buscar con regex en cualquier parte
-        try {
-          const successMessage2 = this.page.locator('text=/Copropiedad creada correctamente/i');
-          await successMessage2.waitFor({ state: 'visible', timeout: 25000 });
-          const isVisible = await successMessage2.isVisible();
-          if (isVisible) {
-            console.log('✅ Mensaje de éxito encontrado (regex)');
-          } else {
-            throw new Error('El mensaje no es visible');
-          }
-        } catch (e2) {
-          // Estrategia alternativa: Buscar en el modal de SweetAlert con selector más amplio
-          try {
-            const successModal = this.page.locator('.swal2-html-container')
-              .or(this.page.locator('#swal2-html-container'))
-              .filter({ hasText: /copropiedad.*creada/i });
-            await successModal.waitFor({ state: 'visible', timeout: 25000 });
-            const isVisible = await successModal.isVisible();
-            if (isVisible) {
-              console.log('✅ Mensaje de éxito encontrado en modal SweetAlert');
-            } else {
-              throw new Error('El mensaje no es visible');
-            }
-          } catch (e3) {
-            throw new Error(`El mensaje de éxito "Copropiedad creada correctamente!" no apareció después de esperar: ${e3}`);
-          }
-        }
-      }
+      console.log('⏳ Esperando mensaje de éxito (timeout ' + successTimeout / 1000 + 's)...');
+      await expect(successMessage).toBeVisible({ timeout: successTimeout });
+      console.log('✅ Mensaje de éxito encontrado');
       
       // Opcional: Hacer click en el botón OK del modal si existe
       try {
@@ -257,7 +228,6 @@ class PropertyPage {
         await this.page.waitForTimeout(1000);
         console.log('✅ Botón OK del modal clickeado');
       } catch (e) {
-        // Si no hay botón OK, continuar
         console.log('⚠️ Botón OK no encontrado, continuando...');
       }
     } catch (e) {
@@ -320,8 +290,8 @@ async function sendTestResultsToFirebase(data: {
 }
 
 test('test_create_property', async ({ page }) => {
-  // Aumentar el timeout del test a 60 segundos para dar tiempo a que aparezca el mensaje
-  test.setTimeout(60000);
+  // Timeout amplio para producción (red/backend más lentos)
+  test.setTimeout(90000);
   
   const startTime = Date.now();
   let errorMsg = '';
