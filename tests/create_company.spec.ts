@@ -42,92 +42,71 @@ class CompanyPage {
   }
 
   async createCompany(uniqueId: string): Promise<void> {
-    // Navegar directamente a la página de compañías
-    await this.page.goto(`${BASE_URL}/companies`);
+    // Ir a Empresas por el menú → Nueva empresa (nueva interfaz)
+    await this.page.getByRole('button', { name: 'Organización' }).click();
+    await this.page.waitForTimeout(500);
+    await expect(this.page.getByRole('link', { name: 'Empresas' })).toBeVisible({ timeout: 10000 });
+    await this.page.getByRole('link', { name: 'Empresas' }).click();
+    await this.page.waitForLoadState('networkidle');
     await this.page.waitForTimeout(1000);
-    
-    // Hacer click en el botón "Agregar Nuevo"
-    await this.page.getByRole('link', { name: 'Agregar Nuevo' }).click();
-    await this.page.waitForTimeout(2000);
-    
-    // Campo Nombre de empresa
-    const nameField = this.page.getByRole('textbox', { name: 'Nombre de empresa Nombre de' });
-    await nameField.waitFor({ state: 'visible', timeout: 5000 });
-    await nameField.click();
-    await nameField.fill(`Empresa Test ${uniqueId}`);
+    await this.page.getByRole('link', { name: 'Nueva empresa' }).click();
+    await this.page.waitForTimeout(1500);
+
+    // DATOS DE LA EMPRESA
+    await this.page.getByRole('textbox', { name: 'NIT (*)' }).click();
+    await this.page.getByRole('textbox', { name: 'NIT (*)' }).fill(`112134567${uniqueId.slice(-4)}`);
+    await this.page.waitForTimeout(300);
+    await this.page.getByRole('textbox', { name: 'Nombre de la empresa (*)' }).click();
+    await this.page.getByRole('textbox', { name: 'Nombre de la empresa (*)' }).fill(`Empresa Test ${uniqueId}`);
+    await this.page.waitForTimeout(300);
+    await this.page.getByRole('textbox', { name: 'Número de teléfono' }).click();
+    await this.page.getByRole('textbox', { name: 'Número de teléfono' }).fill(`3254646${uniqueId.slice(-4)}`);
+    await this.page.waitForTimeout(300);
+    await this.page.getByRole('textbox', { name: 'Sitio web' }).click();
+    await this.page.getByRole('textbox', { name: 'Sitio web' }).fill(`midominio${uniqueId.slice(-4)}.com`);
     await this.page.waitForTimeout(500);
-    console.log(`✅ Campo nombre llenado: Empresa Test ${uniqueId}`);
-    
-    // Campo NIT
-    const nitField = this.page.getByRole('textbox', { name: 'NIT NIT NIT NIT NIT NIT NIT' });
-    await nitField.waitFor({ state: 'visible', timeout: 5000 });
-    await nitField.fill(`112134567${uniqueId.slice(-3)}`);
-    await this.page.waitForTimeout(500);
-    console.log('✅ Campo NIT llenado');
-    
-    // Campo Teléfono/Celular
-    const phoneField = this.page.getByRole('textbox', { name: 'Teléfono/Celular Teléfono/' });
-    await phoneField.waitFor({ state: 'visible', timeout: 5000 });
-    await phoneField.click();
-    await phoneField.fill(`3254646${uniqueId.slice(-2)}`);
-    await this.page.waitForTimeout(500);
-    console.log('✅ Campo teléfono llenado');
-    
-    // Campo Paga (select)
-    const pagaSelect = this.page.getByLabel('Paga');
-    await pagaSelect.waitFor({ state: 'visible', timeout: 5000 });
-    await pagaSelect.selectOption('1');
-    await this.page.waitForTimeout(500);
-    console.log('✅ Campo Paga seleccionado');
-    
-    // Campo Dominio web
-    const domainField = this.page.getByRole('textbox', { name: 'Dominio web Dominio web' });
-    await domainField.waitFor({ state: 'visible', timeout: 5000 });
-    await domainField.click();
-    await domainField.fill(`midominio${uniqueId.slice(-4)}.com`);
-    await this.page.waitForTimeout(500);
-    console.log('✅ Campo dominio web llenado');
-    
-    // Campo Propiedades (select)
-    const propertiesSelect = this.page.locator('#properties');
-    await propertiesSelect.waitFor({ state: 'visible', timeout: 5000 });
-    await propertiesSelect.selectOption('138');
-    await this.page.waitForTimeout(500);
-    console.log('✅ Campo propiedades seleccionado');
-    
-    // Hacer scroll hacia abajo para encontrar el botón
-    await this.page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-    await this.page.waitForTimeout(1000);
-    await this.page.keyboard.press('End');
-    await this.page.waitForTimeout(1000);
-    
-    // Hacer click en el botón "Agregar Empresa"
-    const addButton = this.page.getByRole('button', { name: 'Agregar Empresa' });
-    await addButton.waitFor({ state: 'visible', timeout: 5000 });
-    await addButton.scrollIntoViewIfNeeded();
-    await this.page.waitForTimeout(500);
-    await addButton.click();
-    await this.page.waitForTimeout(2000);
-    console.log('✅ Botón "Agregar Empresa" clickeado');
-    
-    // Esperar a que aparezca el botón "Cerrar" del modal y hacer click
-    try {
-      const closeButton = this.page.getByRole('button', { name: 'Cerrar' });
-      await closeButton.waitFor({ state: 'visible', timeout: 15000 });
-      await closeButton.click();
-      await this.page.waitForTimeout(1000);
-      console.log('✅ Botón "Cerrar" del modal clickeado');
-    } catch (e) {
-      console.log('⚠️ Botón "Cerrar" no encontrado, continuando...');
+    console.log('✅ Datos de la empresa llenados');
+
+    // HORARIO DE ACCESO: marcar todos los días
+    for (let i = 1; i <= 7; i++) {
+      await this.page.getByTestId(`checkbox-day-${i}`).check();
+      await this.page.waitForTimeout(100);
     }
+    await this.page.locator('#initial_time').fill('08:00');
+    await this.page.locator('#final_time').fill('23:59');
+    await this.page.waitForTimeout(300);
+    console.log('✅ Horario de acceso configurado');
+
+    // COPROPIEDADES Y EMPRESA PRINCIPAL (buscador dinámico: escribir y Enter para confirmar)
+    const reactSelectInput = this.page.locator('input[id*="react-select"]');
+
+    // --- Copropiedades: abrir, escribir en el buscador, Enter para seleccionar
+    await this.page.locator('div').filter({ hasText: /^Seleccionar copropiedades$/ }).nth(2).click();
+    await this.page.waitForTimeout(400);
+    await reactSelectInput.first().fill('Queo Q&A (Staging)');
+    await this.page.waitForTimeout(1000);
+    await reactSelectInput.first().press('Enter');
+    await this.page.waitForTimeout(800);
+
+    // --- Empresa principal: abrir, esperar lista y seleccionar primera opción con ArrowDown + Enter
+    await this.page.locator('div').filter({ hasText: /^Seleccionar empresa principal$/ }).nth(2).click();
+    await this.page.waitForTimeout(800);
+    await this.page.keyboard.press('ArrowDown');
+    await this.page.waitForTimeout(300);
+    await this.page.keyboard.press('Enter');
+    await this.page.waitForTimeout(800);
+    console.log('✅ Copropiedades y empresa principal seleccionadas');
+
+    // Guardar
+    await this.page.getByRole('button', { name: 'Guardar' }).click();
+    await this.page.waitForTimeout(2000);
+    console.log('✅ Botón Guardar clickeado');
   }
 
   async isCompanyCreated(): Promise<boolean> {
-    // Si el botón "Cerrar" se clickeó exitosamente en createCompany(), 
-    // significa que la empresa fue creada correctamente
-    console.log('✅ Validación completada: el botón "Cerrar" se clickeó, confirmando que la empresa fue creada');
+    const message = this.page.getByText('Empresa creada');
+    await expect(message).toBeVisible({ timeout: 15000 });
+    console.log('✅ Mensaje "Empresa creada" visible');
     return true;
   }
 }
